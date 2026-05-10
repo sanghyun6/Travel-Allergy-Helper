@@ -38,11 +38,14 @@ For each menu item found, return a JSON array with this structure:
       "conflictingRestrictions": ["restriction1", "restriction2"],
       "allergenFlags": [
         { "name": "Peanuts", "severity": "high" | "medium" | "low" }
-      ]
+      ],
+      "boundingBox": { "ymin": 0, "xmin": 0, "ymax": 1000, "xmax": 1000 }
     }
   ],
   "detectedLanguage": "detected language name"
 }
+
+The boundingBox MUST be normalized integer coordinates from 0 to 1000 (where 0,0 is the top-left of the image and 1000,1000 is the bottom-right). The box should tightly enclose the entire menu entry — including the item name in all written languages, its price, and any related description text — but exclude unrelated photos or other menu items. This is used to crop the original image so the user can see exactly where the item appears on the menu.
 
 Safety levels:
 - "danger": directly conflicts with user restrictions or contains major allergens (peanuts, tree nuts, shellfish, eggs, dairy, gluten, soy)

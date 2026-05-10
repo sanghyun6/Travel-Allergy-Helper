@@ -128,6 +128,14 @@ export const AnalyzeMenuResponse = zod.object({
         }),
       ),
       translatedName: zod.string(),
+      boundingBox: zod
+        .object({
+          ymin: zod.number(),
+          xmin: zod.number(),
+          ymax: zod.number(),
+          xmax: zod.number(),
+        })
+        .optional(),
     }),
   ),
   detectedLanguage: zod.string(),

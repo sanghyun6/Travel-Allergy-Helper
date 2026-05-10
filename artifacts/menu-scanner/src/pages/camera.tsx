@@ -268,79 +268,150 @@ export default function CameraPage() {
               </div>
             )}
 
-            {analyzeMenu.data && (
-              <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-bold text-lg">Found {analyzeMenu.data.items.length} items</h3>
-                  <span className="text-sm px-2 py-1 bg-muted rounded-md text-muted-foreground font-medium">
-                    {analyzeMenu.data.detectedLanguage}
-                  </span>
-                </div>
+            {analyzeMenu.data && (() => {
+              const userRestrictions = new Set(
+                (profile?.restrictions || []).map(r => r.toLowerCase())
+              );
+              const isMatched = (name: string) => {
+                const n = name.toLowerCase();
+                for (const r of userRestrictions) {
+                  if (n.includes(r) || r.includes(n)) return true;
+                }
+                return false;
+              };
+              const order = { danger: 0, warning: 1, safe: 2 } as const;
+              const sortedItems = [...analyzeMenu.data.items].sort(
+                (a, b) =>
+                  (order[a.safetyLevel as keyof typeof order] ?? 3) -
+                  (order[b.safetyLevel as keyof typeof order] ?? 3)
+              );
+              const dangerCount = sortedItems.filter(i => i.safetyLevel === "danger").length;
 
-                <div className="space-y-4">
-                  {analyzeMenu.data.items.map((item, idx) => {
-                    const isAdded = cartItems.some(i => i.name === item.name);
-                    return (
-                      <Card key={idx} className="overflow-hidden border-2 transition-all" data-testid={`card-menu-item-${idx}`}>
-                        <CardContent className="p-0">
-                          <div className={`p-4 border-b border-dashed ${getSafetyColor(item.safetyLevel)}`}>
-                            <div className="flex items-center gap-2 font-semibold text-lg">
-                              {getSafetyIcon(item.safetyLevel)}
-                              <span>{item.translatedName}</span>
-                            </div>
-                            <p className="text-sm mt-1 opacity-80 font-medium">{item.name}</p>
-                          </div>
+              return (
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-bold text-lg">Found {sortedItems.length} items</h3>
+                    <span className="text-sm px-2 py-1 bg-muted rounded-md text-muted-foreground font-medium">
+                      {analyzeMenu.data.detectedLanguage}
+                    </span>
+                  </div>
 
-                          <div className="p-4 space-y-4">
-                            <p className="text-sm text-foreground/80 leading-relaxed">{item.description}</p>
+                  {dangerCount > 0 && (
+                    <div className="flex items-center gap-2 p-3 rounded-xl bg-destructive/10 border-2 border-destructive/30 text-destructive text-sm font-semibold">
+                      <XCircle className="w-4 h-4 shrink-0" />
+                      <span>{dangerCount} item{dangerCount > 1 ? "s match" : " matches"} your restrictions — avoid these.</span>
+                    </div>
+                  )}
 
-                            {(item.conflictingRestrictions.length > 0 || item.allergenFlags.length > 0) && (
-                              <div className="space-y-2 bg-muted/50 p-3 rounded-xl">
-                                {item.conflictingRestrictions.length > 0 && (
-                                  <div className="text-sm text-destructive font-medium flex items-start gap-1.5">
-                                    <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                                    <span>Contains: {item.conflictingRestrictions.join(", ")}</span>
-                                  </div>
-                                )}
-                                {item.allergenFlags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1.5 mt-2">
-                                    {item.allergenFlags.map((flag, i) => (
-                                      <span key={i} className="text-xs px-2 py-1 rounded-md bg-warning/10 text-warning-foreground border border-warning/20 font-medium">
-                                        {flag.name}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
+                  <div className="space-y-4">
+                    {sortedItems.map((item, idx) => {
+                      const isAdded = cartItems.some(i => i.name === item.name);
+                      const isDanger = item.safetyLevel === "danger";
+                      const bbox = item.boundingBox;
+                      const cropStyle = bbox
+                        ? (() => {
+                            const w = Math.max(1, bbox.xmax - bbox.xmin);
+                            const h = Math.max(1, bbox.ymax - bbox.ymin);
+                            const restW = 1000 - w;
+                            const restH = 1000 - h;
+                            return {
+                              backgroundImage: `url(${imagePreview})`,
+                              backgroundSize: `${(1000 / w) * 100}% ${(1000 / h) * 100}%`,
+                              backgroundPosition: `${restW > 0 ? (bbox.xmin / restW) * 100 : 0}% ${restH > 0 ? (bbox.ymin / restH) * 100 : 0}%`,
+                              backgroundRepeat: "no-repeat" as const,
+                            };
+                          })()
+                        : undefined;
+
+                      return (
+                        <Card
+                          key={idx}
+                          className={`overflow-hidden transition-all ${
+                            isDanger
+                              ? "border-2 border-destructive shadow-md ring-2 ring-destructive/20"
+                              : "border"
+                          }`}
+                          data-testid={`card-menu-item-${idx}`}
+                        >
+                          <CardContent className="p-0">
+                            <div className={`p-4 border-b border-dashed ${getSafetyColor(item.safetyLevel)}`}>
+                              <div className="flex items-center gap-2 font-semibold text-lg">
+                                {getSafetyIcon(item.safetyLevel)}
+                                <span>{item.translatedName}</span>
                               </div>
+                              <p className="text-sm mt-1 opacity-80 font-medium">{item.name}</p>
+                            </div>
+
+                            {cropStyle && (
+                              <div
+                                className="w-full h-24 bg-muted border-b"
+                                style={cropStyle}
+                                aria-label="Location of item on the menu"
+                                data-testid={`crop-menu-item-${idx}`}
+                              />
                             )}
 
-                            <Button
-                              variant={item.safetyLevel === "danger" ? "destructive" : "default"}
-                              className="w-full rounded-xl"
-                              disabled={isAdded}
-                              onClick={() => {
-                                addToCart(item as MenuItem, analyzeMenu.data.detectedLanguage);
-                                toast({
-                                  title: "Added to order",
-                                  description: `${item.translatedName} added.`,
-                                });
-                              }}
-                              data-testid={`button-add-item-${idx}`}
-                            >
-                              {isAdded ? (
-                                <><Check className="w-4 h-4 mr-2" /> Added</>
-                              ) : (
-                                <><Plus className="w-4 h-4 mr-2" /> Add to Order</>
+                            <div className="p-4 space-y-4">
+                              <p className="text-sm text-foreground/80 leading-relaxed">{item.description}</p>
+
+                              {(item.conflictingRestrictions.length > 0 || item.allergenFlags.length > 0) && (
+                                <div className="space-y-2 bg-muted/50 p-3 rounded-xl">
+                                  {item.conflictingRestrictions.length > 0 && (
+                                    <div className="text-sm text-destructive font-medium flex items-start gap-1.5">
+                                      <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                                      <span>Contains: {item.conflictingRestrictions.join(", ")}</span>
+                                    </div>
+                                  )}
+                                  {item.allergenFlags.length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                      {item.allergenFlags.map((flag, i) => {
+                                        const matched = isMatched(flag.name);
+                                        return (
+                                          <span
+                                            key={i}
+                                            className={`text-xs px-2 py-1 rounded-md font-medium border ${
+                                              matched
+                                                ? "bg-destructive/10 text-destructive border-destructive/30"
+                                                : "bg-warning/10 text-warning-foreground border-warning/20"
+                                            }`}
+                                          >
+                                            {matched ? "⚠ " : ""}{flag.name}
+                                          </span>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
                               )}
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
+
+                              <Button
+                                variant={isDanger ? "destructive" : "default"}
+                                className="w-full rounded-xl"
+                                disabled={isAdded}
+                                onClick={() => {
+                                  addToCart(item as MenuItem, analyzeMenu.data.detectedLanguage);
+                                  toast({
+                                    title: "Added to order",
+                                    description: `${item.translatedName} added.`,
+                                  });
+                                }}
+                                data-testid={`button-add-item-${idx}`}
+                              >
+                                {isAdded ? (
+                                  <><Check className="w-4 h-4 mr-2" /> Added</>
+                                ) : (
+                                  <><Plus className="w-4 h-4 mr-2" /> Add to Order</>
+                                )}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         )}
       </div>

@@ -63,6 +63,13 @@ export interface MenuAllergenFlag {
   severity: string;
 }
 
+export interface MenuItemBoundingBox {
+  ymin: number;
+  xmin: number;
+  ymax: number;
+  xmax: number;
+}
+
 export interface MenuItem {
   name: string;
   description: string;
@@ -70,6 +77,7 @@ export interface MenuItem {
   conflictingRestrictions: string[];
   allergenFlags: MenuAllergenFlag[];
   translatedName: string;
+  boundingBox?: MenuItemBoundingBox;
 }
 
 export interface MenuAnalysisResult {

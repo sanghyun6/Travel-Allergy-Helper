@@ -12,6 +12,7 @@ export interface MenuItem {
   safetyLevel: "safe" | "warning" | "danger";
   conflictingRestrictions: string[];
   allergenFlags: { name: string; severity: string }[];
+  boundingBox?: { ymin: number; xmin: number; ymax: number; xmax: number };
 }
 
 interface StoreContextValue {

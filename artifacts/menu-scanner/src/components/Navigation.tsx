@@ -9,8 +9,8 @@ export function BottomNav() {
   if (location === "/" || location === "/onboarding") return null;
 
   const links = [
-    { href: "/camera", icon: Camera, label: "Scan" },
-    { href: "/cart", icon: ShoppingBag, label: "Order", badge: cartItems.length > 0 ? cartItems.length : null },
+    { href: "/camera", icon: Camera, label: "Camera" },
+    { href: "/cart", icon: ShoppingBag, label: "Cart", badge: cartItems.length > 0 ? cartItems.length : null },
     { href: "/settings", icon: Settings, label: "Settings" },
   ];
 

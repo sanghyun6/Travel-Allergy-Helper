@@ -221,11 +221,12 @@ paths:
               $ref: "#/components/schemas/TtsInput"
       responses:
         "200":
-          description: Audio data as base64
+          description: Audio stream (audio/mpeg)
           content:
-            application/json:
+            audio/mpeg:
               schema:
-                $ref: "#/components/schemas/TtsResponse"
+                type: string
+                format: binary
 
   /chat/message:
     post:

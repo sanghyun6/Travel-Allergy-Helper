@@ -66,6 +66,7 @@ Keep responses concise and practical — the user is at a restaurant.`;
     const rawResponse = await client.addMessage(activeThreadId, {
       content: message,
       stream: false,
+      memory: "Auto",
     });
 
     const response = rawResponse as ChatMessagesResponse;

@@ -1,5 +1,4 @@
 uploads = []
-outputs = []
 
 [[generated]]
 id = "LZDsVzBs3F_xat9qYyxCw"
@@ -12,3 +11,9 @@ id = "5d6hHxyjt_wx9cdtVwg4t"
 uri = "file://artifacts/pitch-deck/public/impact.png"
 type = "image"
 title = "friends sharing meal abroad"
+
+[[outputs]]
+id = "cE8COFiyed5jEoqy4Xn8F"
+uri = "file://.local/outputs/Travel-Allergy-Helper.pptx"
+type = "slides"
+title = "Travel Allergy Helper.pptx"

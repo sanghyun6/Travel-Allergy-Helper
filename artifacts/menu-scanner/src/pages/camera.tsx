@@ -162,15 +162,35 @@ export default function CameraPage() {
         video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
       });
       streamRef.current = stream;
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-      }
+      // Flip into "live" first so the <video> element is mounted, THEN attach
+      // the srcObject in the effect below. Attaching here (before the element
+      // mounts) was the reason the preview stayed black until the user
+      // flipped the camera.
       setCameraMode("live");
     } catch {
       setCameraError(true);
     }
   }, [facingMode, stopStream]);
+
+  // Attach the active MediaStream to the <video> element whenever either
+  // changes. Runs once the element mounts (cameraMode → "live"), so the
+  // first-load preview no longer requires a manual flip to render.
+  useEffect(() => {
+    if (isNativePlatform) return;
+    if (cameraMode !== "live") return;
+    const video = videoRef.current;
+    const stream = streamRef.current;
+    if (!video || !stream) return;
+    if (video.srcObject !== stream) {
+      video.srcObject = stream;
+    }
+    const playPromise = video.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {
+        /* autoplay can be deferred until user gesture; ignore */
+      });
+    }
+  }, [cameraMode, facingMode]);
 
   // Auto-start camera whenever we're in the idle scanning state with no preview.
   useEffect(() => {

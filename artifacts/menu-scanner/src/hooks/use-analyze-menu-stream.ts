@@ -64,13 +64,31 @@ function parseEventBlock(block: string): { event: string; data: string } | null 
   return { event, data: dataLines.join("\n") };
 }
 
+// Maximum window of total silence (no SSE bytes at all) before we give up
+// on a stuck stream and surface an error. The server pings every 5s, so any
+// gap longer than this means the connection is genuinely dead.
+const SILENCE_TIMEOUT_MS = 60_000;
+
+type AbortKind = "user-cancel" | "silence-timeout";
+interface RunContext {
+  ac: AbortController;
+  // Reason recorded when this specific run is aborted. Per-run state means
+  // overlapping start/cancel/start sequences cannot misclassify each other.
+  abortKind: AbortKind | null;
+}
+
 export function useAnalyzeMenuStream() {
   const [state, setState] = useState<AnalyzeMenuStreamState>(initialState);
-  const abortRef = useRef<AbortController | null>(null);
+  // The currently-active run (if any). Older runs hold their own RunContext
+  // by closure, so racing completions never mutate the new run's state.
+  const runRef = useRef<RunContext | null>(null);
 
   const cancel = useCallback(() => {
-    abortRef.current?.abort();
-    abortRef.current = null;
+    const run = runRef.current;
+    if (!run) return;
+    run.abortKind = "user-cancel";
+    run.ac.abort();
+    runRef.current = null;
   }, []);
 
   const reset = useCallback(() => {
@@ -81,8 +99,9 @@ export function useAnalyzeMenuStream() {
   const start = useCallback(
     async (req: AnalyzeMenuRequest) => {
       cancel();
-      const ac = new AbortController();
-      abortRef.current = ac;
+      const run: RunContext = { ac: new AbortController(), abortKind: null };
+      runRef.current = run;
+      const { ac } = run;
 
       setState({
         ...initialState,
@@ -90,6 +109,28 @@ export function useAnalyzeMenuStream() {
         itemErrors: new Map(),
         status: "starting",
       });
+
+      // Watchdog: if we go SILENCE_TIMEOUT_MS without ANY bytes (not even a
+      // heartbeat ping), abort. Any byte from the server re-arms the timer.
+      // Declared at function scope so cleanup works in every branch (try,
+      // catch, and the gated state-update below).
+      let silenceTimer: ReturnType<typeof setTimeout> | null = null;
+      const armSilenceTimer = () => {
+        if (silenceTimer) clearTimeout(silenceTimer);
+        silenceTimer = setTimeout(() => {
+          if (run.abortKind == null) run.abortKind = "silence-timeout";
+          try { ac.abort(); } catch { /* ignore */ }
+        }, SILENCE_TIMEOUT_MS);
+      };
+      const clearSilenceTimer = () => {
+        if (silenceTimer) {
+          clearTimeout(silenceTimer);
+          silenceTimer = null;
+        }
+      };
+      // Only update React state if THIS run is still the active one. Stale
+      // late completions from a previous run must not clobber a newer run.
+      const isCurrent = () => runRef.current === run;
 
       try {
         const response = await fetch("/api/menu/analyze", {
@@ -116,11 +157,13 @@ export function useAnalyzeMenuStream() {
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
+        armSilenceTimer();
 
         let sawTerminal = false;
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
+          armSilenceTimer();
           buffer += decoder.decode(value, { stream: true });
 
           let sepIdx: number;
@@ -141,28 +184,42 @@ export function useAnalyzeMenuStream() {
             if (parsed.event === "done" || parsed.event === "error") {
               sawTerminal = true;
             }
-            handleEvent(parsed.event, payload);
+            if (isCurrent()) handleEvent(parsed.event, payload);
           }
         }
 
+        clearSilenceTimer();
+
         // Stream closed cleanly without a terminal `done`/`error` event —
-        // treat this as a dropped connection so the user can retry.
-        if (!sawTerminal && !ac.signal.aborted) {
+        // treat as a dropped connection so the user can retry.
+        if (!sawTerminal && run.abortKind !== "user-cancel" && isCurrent()) {
           setState((s) =>
             s.status === "done" || s.status === "error"
               ? s
               : {
                   ...s,
                   status: "error",
-                  error: "Connection closed before analysis finished. Please retry.",
+                  error: run.abortKind === "silence-timeout"
+                    ? "The menu took too long to read. Please try again with a clearer photo."
+                    : "Connection closed before analysis finished. Please retry.",
                 },
           );
         }
       } catch (err) {
-        if (ac.signal.aborted) return;
-        const message =
-          err instanceof Error ? err.message : "Failed to analyze menu";
+        clearSilenceTimer();
+        // User pressed cancel/reset: stay quiet.
+        if (run.abortKind === "user-cancel") return;
+        // Don't clobber a newer run that's already started.
+        if (!isCurrent()) return;
+        const message = run.abortKind === "silence-timeout"
+          ? "The menu took too long to read. Please try again."
+          : err instanceof Error
+            ? err.message
+            : "Failed to analyze menu";
         setState((s) => ({ ...s, status: "error", error: message }));
+      } finally {
+        clearSilenceTimer();
+        if (isCurrent()) runRef.current = null;
       }
 
       function handleEvent(event: string, payload: unknown) {

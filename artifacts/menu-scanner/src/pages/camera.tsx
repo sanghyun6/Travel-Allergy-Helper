@@ -345,6 +345,9 @@ export default function CameraPage() {
                   <p className="text-white text-sm font-medium text-center px-4">
                     Reading menu…
                   </p>
+                  <p className="text-white/70 text-xs text-center px-6 max-w-[16rem]">
+                    Long menus can take up to a minute.
+                  </p>
                 </div>
               )}
 

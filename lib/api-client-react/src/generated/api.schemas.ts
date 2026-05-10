@@ -78,6 +78,7 @@ export interface MenuItem {
   allergenFlags: MenuAllergenFlag[];
   translatedName: string;
   boundingBox?: MenuItemBoundingBox;
+  nameBox?: MenuItemBoundingBox;
 }
 
 export interface MenuAnalysisResult {

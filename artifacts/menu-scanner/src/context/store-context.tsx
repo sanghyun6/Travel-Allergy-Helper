@@ -13,6 +13,7 @@ export interface MenuItem {
   conflictingRestrictions: string[];
   allergenFlags: { name: string; severity: string }[];
   boundingBox?: { ymin: number; xmin: number; ymax: number; xmax: number };
+  nameBox?: { ymin: number; xmin: number; ymax: number; xmax: number };
 }
 
 interface StoreContextValue {

@@ -289,14 +289,17 @@ export default function CameraPage() {
               {/* Item pins */}
               {analyzeMenu.data && overlayItems.map((item, idx) => {
                 const bbox = item.boundingBox!;
-                const cx = ((bbox.xmin + bbox.xmax) / 2) / 10;
-                const ty = bbox.ymin / 10;
+                // Use nameBox (tight around foreign text) for pin placement if available,
+                // otherwise fall back to top of full bounding box
+                const pinBox = item.nameBox ?? bbox;
+                const cx = ((pinBox.xmin + pinBox.xmax) / 2) / 10;
+                const cy = ((pinBox.ymin + pinBox.ymax) / 2) / 10;
                 const isSelected = selectedItem?.name === item.name;
                 return (
                   <button
                     key={idx}
                     onClick={() => setSelectedItem(isSelected ? null : item)}
-                    style={{ left: `${cx}%`, top: `${ty}%`, transform: "translateX(-50%)" }}
+                    style={{ left: `${cx}%`, top: `${cy}%`, transform: "translate(-50%, -50%)" }}
                     className={`
                       absolute z-10 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-semibold
                       shadow-lg backdrop-blur-sm whitespace-nowrap transition-all active:scale-95 max-w-[44%]

@@ -41,3 +41,28 @@ export async function getHistoryCollection(): Promise<Collection<HistoryDoc>> {
   }
   return cachedDb.collection<HistoryDoc>("history");
 }
+
+export interface AssistantDoc {
+  _id?: string;
+  deviceId: string;
+  assistantId: string;
+  threadId: string | null;
+  profileHash: string;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+let assistantsIndexed = false;
+
+export async function getAssistantsCollection(): Promise<Collection<AssistantDoc>> {
+  const client = await getClient();
+  if (!cachedDb) {
+    cachedDb = client.db(process.env.MONGODB_DB || "menu_scanner");
+  }
+  const col = cachedDb.collection<AssistantDoc>("chat_assistants");
+  if (!assistantsIndexed) {
+    await col.createIndex({ deviceId: 1 }, { unique: true });
+    assistantsIndexed = true;
+  }
+  return col;
+}

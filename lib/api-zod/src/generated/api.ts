@@ -281,7 +281,6 @@ export const GetOrderingInstructionsBody = zod.object({
   targetLanguage: zod.string(),
   restrictions: zod.array(zod.string()),
   menuLanguage: zod.string(),
-  extraInstructions: zod.string().optional(),
 });
 
 export const GetOrderingInstructionsResponse = zod.object({
@@ -596,12 +595,28 @@ export const GetRiskInsightsResponse = zod.object({
 /**
  * @summary Send a message to Backboard AI chat with allergy context
  */
+export const sendChatMessageHeaderXDeviceIdMax = 200;
+
+export const SendChatMessageHeader = zod.object({
+  "x-device-id": zod
+    .string()
+    .min(1)
+    .max(sendChatMessageHeaderXDeviceIdMax)
+    .describe(
+      "Stable per-device identifier used to scope user data (history, risk model, outcomes).",
+    ),
+});
+
 export const SendChatMessageBody = zod.object({
   message: zod.string(),
   threadId: zod.string().nullish(),
   restrictions: zod.array(zod.string()),
   cartItems: zod.array(zod.string()),
   orderingPhrases: zod.array(zod.string()),
+  preferences: zod.array(zod.string()).optional(),
+  preferenceNotes: zod.string().nullish(),
+  nativeLanguage: zod.string().nullish(),
+  menuLanguage: zod.string().nullish(),
 });
 
 export const SendChatMessageResponse = zod.object({

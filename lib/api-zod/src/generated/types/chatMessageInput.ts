@@ -13,4 +13,11 @@ export interface ChatMessageInput {
   restrictions: string[];
   cartItems: string[];
   orderingPhrases: string[];
+  preferences?: string[];
+  /** @nullable */
+  preferenceNotes?: string | null;
+  /** @nullable */
+  nativeLanguage?: string | null;
+  /** @nullable */
+  menuLanguage?: string | null;
 }

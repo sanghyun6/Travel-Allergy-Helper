@@ -25,7 +25,20 @@ export default function OrderPage() {
   const { threadId, setThreadId, clearThread } = useChatThread();
 
   const ordering = useOrderingInstructionsStream();
-  const chat = useSendChatMessage();
+  const deviceIdHeader = useMemo(() => {
+    if (typeof localStorage === "undefined") return "";
+    let id = localStorage.getItem("deviceId");
+    if (!id) {
+      id = (typeof crypto !== "undefined" && "randomUUID" in crypto)
+        ? crypto.randomUUID()
+        : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem("deviceId", id);
+    }
+    return id;
+  }, []);
+  const chat = useSendChatMessage({
+    request: { headers: { "x-device-id": deviceIdHeader } },
+  });
 
   const orderedInstructions = useMemo(() => {
     return Array.from(ordering.state.instructions.entries())
@@ -113,6 +126,10 @@ export default function OrderPage() {
           restrictions: profile.restrictions,
           cartItems: cartItems.map((i) => i.name),
           orderingPhrases,
+          preferences: profile.preferences ?? [],
+          preferenceNotes: profile.preferenceNotes ?? null,
+          nativeLanguage: profile.nativeLanguage ?? null,
+          menuLanguage: menuLanguage ?? null,
         },
       },
       {

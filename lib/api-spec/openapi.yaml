@@ -400,6 +400,8 @@ paths:
       operationId: sendChatMessage
       tags: [chat]
       summary: Send a message to Backboard AI chat with allergy context
+      parameters:
+        - $ref: "#/components/parameters/DeviceIdHeader"
       requestBody:
         required: true
         content:
@@ -806,6 +808,16 @@ components:
           type: array
           items:
             type: string
+        preferences:
+          type: array
+          items:
+            type: string
+        preferenceNotes:
+          type: ["string", "null"]
+        nativeLanguage:
+          type: ["string", "null"]
+        menuLanguage:
+          type: ["string", "null"]
       required:
         - message
         - restrictions

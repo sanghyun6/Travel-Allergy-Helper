@@ -478,54 +478,16 @@ export default function CameraPage() {
         </div>
       )}
 
-      {/* ── Top bar: language translation pill ── */}
+      {/* Hidden file input — used by the shutter fallback when camera is unavailable. */}
       {showCameraSurface && (
-        <div className="relative z-10 px-4 pt-4 pb-2 flex items-center gap-2">
-          <input
-            type="file"
-            accept="image/*"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            data-testid="input-file-upload"
-          />
-
-          <div
-            className="flex-1 mx-auto flex items-center justify-between gap-1 rounded-full bg-white/95 backdrop-blur-md border-2 border-primary/70 shadow-lg pl-2 pr-2 h-11"
-            data-testid="language-pill"
-          >
-            <Select value={menuLanguage} onValueChange={setMenuLanguage}>
-              <SelectTrigger
-                className="h-9 border-0 shadow-none bg-transparent px-2 text-sm font-semibold text-foreground focus:ring-0 focus:ring-offset-0 [&>svg]:text-primary [&>svg]:opacity-100"
-                data-testid="select-menu-language"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {MENU_LANGUAGES.map((lang) => (
-                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <ArrowLeftRight className="w-4 h-4 text-primary shrink-0" aria-hidden />
-
-            <Select value={targetLanguage} onValueChange={handleTargetLanguageChange}>
-              <SelectTrigger
-                className="h-9 border-0 shadow-none bg-transparent px-2 text-sm font-semibold text-foreground focus:ring-0 focus:ring-offset-0 [&>svg]:text-primary [&>svg]:opacity-100"
-                data-testid="select-target-language"
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {LANGUAGES.map((lang) => (
-                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-        </div>
+        <input
+          type="file"
+          accept="image/*"
+          className="hidden"
+          ref={fileInputRef}
+          onChange={handleFileUpload}
+          data-testid="input-file-upload"
+        />
       )}
 
       {/* ── Spacer pushing bottom bar / preview content into view ── */}
@@ -754,6 +716,42 @@ export default function CameraPage() {
       {/* ── Bottom shutter bar (idle/live mode only) ── */}
       {showCameraSurface && (
         <div className="relative z-10 mt-auto">
+          {/* Compact language translation row, sitting just above the green bar. */}
+          <div
+            className="px-4 pb-2 pt-1 flex items-center justify-center gap-2"
+            data-testid="language-pill"
+          >
+            <Select value={menuLanguage} onValueChange={setMenuLanguage}>
+              <SelectTrigger
+                className="h-9 w-auto min-w-[120px] max-w-[44vw] bg-white/95 backdrop-blur-md text-foreground text-xs font-medium px-3 rounded-md shadow-sm"
+                data-testid="select-menu-language"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MENU_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <ArrowLeftRight className="w-4 h-4 text-white shrink-0 drop-shadow" aria-hidden />
+
+            <Select value={targetLanguage} onValueChange={handleTargetLanguageChange}>
+              <SelectTrigger
+                className="h-9 w-auto min-w-[120px] max-w-[44vw] bg-white/95 backdrop-blur-md text-foreground text-xs font-medium px-3 rounded-md shadow-sm"
+                data-testid="select-target-language"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 flex items-end justify-between pl-[72px] pr-[72px] pt-[12px] pb-[24px]">
             <button
               type="button"

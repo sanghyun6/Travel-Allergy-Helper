@@ -494,11 +494,6 @@ export default function CameraPage() {
 
           <div className="p-4 flex flex-col gap-4 pb-8">
 
-
-        {/* Results: image + overlay */}
-        {imagePreview && (
-          <div className="flex flex-col gap-4 pb-8">
-
             {/* ── Annotated photo ── */}
             <div className="relative w-full rounded-2xl overflow-hidden border shadow-sm bg-black">
               <img
@@ -698,8 +693,59 @@ export default function CameraPage() {
               <ReviewNoteInput onSubmit={handleReview} busy={reviewBusy} />
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* ── Bottom shutter bar (idle/live mode only) ── */}
+      {showCameraSurface && (
+        <div className="relative z-10 mt-auto">
+          <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 pt-3 pb-6 flex items-end justify-between">
+            <button
+              type="button"
+              onClick={() => setLocation("/cart")}
+              className="relative w-14 h-14 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center text-white"
+              aria-label="Past order"
+              data-testid="button-past-order"
+            >
+              <ShoppingBag className="w-6 h-6" strokeWidth={2.25} />
+              {cartItems.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-white text-primary text-[10px] font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center shadow-md">
+                  {cartItems.length}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={cameraMode === "live" ? capturePhoto : () => fileInputRef.current?.click()}
+              disabled={cameraMode !== "live" && cameraError === false}
+              className="w-20 h-20 -mt-6 rounded-full bg-white/30 backdrop-blur-md flex items-center justify-center active:scale-95 transition-all disabled:opacity-50 ring-4 ring-white/40 shadow-2xl"
+              aria-label={cameraMode === "live" ? "Snap picture" : "Upload from gallery"}
+              data-testid="button-shutter"
+            >
+              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center">
+                <div className="w-14 h-14 rounded-full border-[3px] border-primary flex items-center justify-center">
+                  {cameraMode === "live" ? (
+                    <Camera className="w-6 h-6 text-primary" strokeWidth={2.25} />
+                  ) : (
+                    <ImageIcon className="w-6 h-6 text-primary" strokeWidth={2.25} />
+                  )}
+                </div>
+              </div>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setLocation("/settings")}
+              className="w-14 h-14 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center text-white"
+              aria-label="Settings"
+              data-testid="button-settings"
+            >
+              <SettingsIcon className="w-6 h-6" strokeWidth={2.25} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Bottom sheet detail panel ── */}
       {selectedItem && (

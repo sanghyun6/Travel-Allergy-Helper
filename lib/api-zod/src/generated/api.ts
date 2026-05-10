@@ -109,6 +109,7 @@ export const GenerateGeminiImageResponse = zod.object({
  */
 export const AnalyzeMenuBody = zod.object({
   imageBase64: zod.string(),
+  mimeType: zod.string().optional().default("image/jpeg"),
   menuLanguage: zod.string(),
   restrictions: zod.array(zod.string()),
 });

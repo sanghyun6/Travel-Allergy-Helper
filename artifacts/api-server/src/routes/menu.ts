@@ -14,7 +14,7 @@ router.post("/menu/analyze", async (req, res) => {
     return;
   }
 
-  const { imageBase64, menuLanguage, restrictions } = parsed.data;
+  const { imageBase64, mimeType, menuLanguage, restrictions } = parsed.data;
 
   const restrictionList =
     restrictions.length > 0
@@ -62,7 +62,7 @@ Return ONLY valid JSON, no markdown.`;
           parts: [
             {
               inlineData: {
-                mimeType: "image/jpeg",
+                mimeType: mimeType,
                 data: imageBase64,
               },
             },

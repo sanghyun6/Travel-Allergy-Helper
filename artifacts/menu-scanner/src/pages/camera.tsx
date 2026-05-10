@@ -92,6 +92,11 @@ export default function CameraPage() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Images only", description: "Please upload a photo of the menu, not a video.", variant: "destructive" });
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
     const reader = new FileReader();
     reader.onload = (ev) => runAnalysis(ev.target?.result as string);
     reader.readAsDataURL(file);
@@ -100,10 +105,12 @@ export default function CameraPage() {
   const runAnalysis = (dataUrl: string) => {
     setImagePreview(dataUrl);
     const base64Data = dataUrl.split(",")[1];
+    const detectedMime = dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
     const lang = menuLanguage === "Auto-detect" ? "Unknown" : menuLanguage;
     analyzeMenu.mutate({
       data: {
         imageBase64: base64Data,
+        mimeType: detectedMime,
         menuLanguage: lang,
         restrictions: profile?.restrictions || [],
       },

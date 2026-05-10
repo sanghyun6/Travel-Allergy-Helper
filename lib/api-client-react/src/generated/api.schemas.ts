@@ -53,6 +53,7 @@ export interface GeminiError {
 
 export interface MenuAnalysisInput {
   imageBase64: string;
+  mimeType?: string;
   menuLanguage: string;
   restrictions: string[];
 }

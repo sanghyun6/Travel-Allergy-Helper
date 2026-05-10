@@ -3,7 +3,6 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
-import { BottomNav } from "@/components/Navigation";
 import { StoreProvider, useProfile } from "@/context/store-context";
 import { useEffect, type ComponentType } from "react";
 
@@ -74,7 +73,6 @@ function App() {
             <div className="font-sans antialiased text-foreground bg-background h-[100dvh] w-full overflow-hidden flex flex-col items-center">
               <div className="w-full max-w-md h-full relative overflow-y-auto bg-background shadow-2xl sm:border-x">
                 <Router />
-                <BottomNav />
               </div>
             </div>
           </WouterRouter>

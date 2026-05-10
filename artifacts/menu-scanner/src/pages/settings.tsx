@@ -8,7 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { COMMON_RESTRICTIONS, LANGUAGES } from "@/lib/constants";
-import { Brain, ChevronRight } from "lucide-react";
+import { Brain, ChevronRight, ArrowLeft } from "lucide-react";
 
 export default function SettingsPage() {
   const { profile, setProfile } = useProfile();
@@ -51,7 +51,15 @@ export default function SettingsPage() {
 
   return (
     <div className="min-h-[100dvh] pb-24 bg-background flex flex-col max-w-md mx-auto w-full">
-      <header className="p-4 border-b bg-card sticky top-0 z-10">
+      <header className="p-4 border-b bg-card sticky top-0 z-10 flex items-center gap-3">
+        <button
+          onClick={() => setLocation("/camera")}
+          className="p-1.5 rounded-full hover:bg-muted"
+          data-testid="button-back-to-camera"
+          aria-label="Back to camera"
+        >
+          <ArrowLeft className="w-5 h-5" />
+        </button>
         <h1 className="text-xl font-bold">Settings</h1>
       </header>
 

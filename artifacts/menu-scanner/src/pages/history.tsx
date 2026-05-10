@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { useHistory, useCart, type HistoryEntry } from "@/context/store-context";
 import { Button } from "@/components/ui/button";
-import { Clock, Trash2, ChevronDown, ChevronUp, ShieldCheck, AlertTriangle, XCircle, RotateCcw, Loader2 } from "lucide-react";
+import { Clock, Trash2, ChevronDown, ChevronUp, ShieldCheck, AlertTriangle, XCircle, RotateCcw, Loader2, ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { OutcomeButtons } from "@/components/risk-score";
 
@@ -78,9 +78,19 @@ export default function HistoryPage() {
   return (
     <div className="min-h-[100dvh] pb-20 bg-background flex flex-col max-w-md mx-auto w-full">
       <header className="p-4 border-b bg-card sticky top-0 z-10 flex justify-between items-center">
-        <div>
-          <h1 className="text-xl font-bold">History</h1>
-          <p className="text-sm text-muted-foreground">{history.length} saved order{history.length !== 1 ? "s" : ""}</p>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setLocation("/camera")}
+            className="p-1.5 rounded-full hover:bg-muted"
+            data-testid="button-back-to-camera"
+            aria-label="Back to camera"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+          <div>
+            <h1 className="text-xl font-bold">History</h1>
+            <p className="text-sm text-muted-foreground">{history.length} saved order{history.length !== 1 ? "s" : ""}</p>
+          </div>
         </div>
         <Button
           variant="ghost"

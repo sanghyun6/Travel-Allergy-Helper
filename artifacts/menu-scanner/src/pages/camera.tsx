@@ -7,7 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   Camera, Image as ImageIcon, Loader2, AlertTriangle,
   ShieldCheck, XCircle, Plus, Check, RefreshCw, X,
-  ShoppingBag, Settings as SettingsIcon, ArrowLeftRight,
+  ShoppingBag, Settings as SettingsIcon, ArrowLeftRight, ArrowLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { LANGUAGES } from "@/lib/constants";
@@ -476,42 +476,29 @@ export default function CameraPage() {
 
       {/* ── Results: image + overlay (replaces camera surface when imagePreview is set) ── */}
       {imagePreview && (
-        <div className="relative z-0 flex-1 bg-background overflow-y-auto">
-          <header className="px-4 pt-4 pb-3 sticky top-0 bg-background/95 backdrop-blur z-10 flex items-center gap-3 border-b">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={reset}
-              className="rounded-full h-9 px-3"
-              data-testid="button-back-to-camera"
-            >
-              <X className="w-4 h-4 mr-1" /> New scan
-            </Button>
-            <div className="text-sm text-muted-foreground truncate">
-              {detectedLanguage || menuLanguage} → {targetLanguage}
-            </div>
-          </header>
+        <div className="relative z-0 flex-1 bg-background overflow-y-auto pb-24">
 
-          <div className="p-4 flex flex-col gap-4 pb-8">
+          {/* Floating circular back button */}
+          <button
+            type="button"
+            onClick={reset}
+            className="fixed top-4 left-4 z-30 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center active:scale-95 transition-all"
+            data-testid="button-back-to-camera"
+            aria-label="Back to camera"
+          >
+            <ArrowLeft className="w-5 h-5 text-foreground" strokeWidth={2.5} />
+          </button>
+
+          <div className="flex flex-col gap-4">
 
             {/* ── Annotated photo ── */}
-            <div className="relative w-full rounded-2xl overflow-hidden border shadow-sm bg-black">
+            <div className="relative w-full overflow-hidden bg-black">
               <img
                 src={imagePreview}
                 alt="Menu"
                 className="w-full h-auto block"
                 style={{ display: "block" }}
               />
-
-              {/* Retake button */}
-              <Button
-                variant="secondary" size="sm"
-                className="absolute top-2 right-2 rounded-full h-8 z-20"
-                onClick={reset}
-                data-testid="button-retake"
-              >
-                Retake
-              </Button>
 
               {/* Initial scanning overlay (only while we have no layout yet) */}
               {showInitialOverlay && (
@@ -526,8 +513,7 @@ export default function CameraPage() {
                 </div>
               )}
 
-              {/* Item pins (placeholders shimmer until analyzed; failed items
-                  show a muted "couldn't analyze" pin without blocking others) */}
+              {/* Item pins — clean white labels; risky items show a red triangle */}
               {overlayItems.map((entry, idx) => {
                 const bbox = entry.boundingBox!;
                 const pinBox = entry.nameBox ?? bbox;
@@ -538,10 +524,16 @@ export default function CameraPage() {
                 const isSelected = analyzed && selectedItem?.name === analyzed.name;
                 const level = analyzed?.safetyLevel ?? (failure ? "failed" : "pending");
                 const label = analyzed?.translatedName
-                  ?? (failure ? `${entry.originalName} — failed` : entry.originalName);
-                const colorClass = failure && !analyzed
-                  ? "bg-gray-500/90 text-white border-gray-300/60"
-                  : pillColors(level);
+                  ?? (failure ? entry.originalName : entry.originalName);
+                const isRisky = level === "danger" || level === "warning";
+
+                const baseClass = !analyzed && !failure
+                  ? "bg-white/90 text-foreground/60 border-white/70"
+                  : failure
+                  ? "bg-white/90 text-foreground/60 border-white/70"
+                  : isSelected
+                  ? "bg-white text-foreground border-2 border-primary"
+                  : "bg-white text-foreground border border-white";
 
                 return (
                   <button
@@ -551,41 +543,29 @@ export default function CameraPage() {
                     title={failure?.message}
                     style={{ left: `${cx}%`, top: `${cy}%`, transform: "translate(-50%, -50%)" }}
                     className={`
-                      absolute z-10 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-semibold
-                      shadow-lg backdrop-blur-sm whitespace-nowrap transition-all max-w-[44%]
-                      ${colorClass}
+                      absolute z-10 flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold
+                      shadow-md whitespace-nowrap transition-all max-w-[50%]
+                      ${baseClass}
                       ${analyzed ? "active:scale-95" : failure ? "cursor-default" : "animate-pulse cursor-default"}
-                      ${isSelected ? "ring-2 ring-white scale-105" : ""}
                     `}
                     data-testid={
                       analyzed ? `pin-menu-item-${idx}` :
                       failure ? `pin-error-${idx}` : `pin-placeholder-${idx}`
                     }
                   >
-                    {analyzed ? (
-                      <SafetyIcon level={level} className="w-3 h-3 shrink-0" />
-                    ) : failure ? (
-                      <AlertTriangle className="w-3 h-3 shrink-0" />
-                    ) : (
+                    {!analyzed && !failure && (
                       <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
                     )}
+                    {analyzed && isRisky && (
+                      <AlertTriangle
+                        className={`w-3.5 h-3.5 shrink-0 ${level === "danger" ? "text-red-500" : "text-amber-500"}`}
+                        strokeWidth={2.5}
+                      />
+                    )}
+                    {failure && !analyzed && (
+                      <AlertTriangle className="w-3 h-3 shrink-0 text-muted-foreground" />
+                    )}
                     <span className="truncate">{label}</span>
-                    {analyzed && (() => {
-                      const cc = crossContam.get(analyzed.name);
-                      if (!cc) return null;
-                      const dot =
-                        cc.risk === "high" ? "bg-red-500"
-                        : cc.risk === "medium" ? "bg-amber-500"
-                        : cc.risk === "low" ? "bg-green-500"
-                        : "bg-gray-400";
-                      return (
-                        <span
-                          className={`ml-1 inline-block w-1.5 h-1.5 rounded-full ${dot}`}
-                          title={`Cross-contamination risk: ${cc.risk}`}
-                          aria-label={`Cross-contamination risk: ${cc.risk}`}
-                        />
-                      );
-                    })()}
                   </button>
                 );
               })}
@@ -690,9 +670,27 @@ export default function CameraPage() {
             )}
 
             {status === "done" && allergensList.length > 0 && completedItems.length > 0 && (
-              <ReviewNoteInput onSubmit={handleReview} busy={reviewBusy} />
+              <div className="px-4">
+                <ReviewNoteInput onSubmit={handleReview} busy={reviewBusy} />
+              </div>
             )}
           </div>
+
+          {/* Floating "Go To Cart" pill */}
+          <button
+            type="button"
+            onClick={() => setLocation("/cart")}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 h-12 px-6 rounded-full bg-primary text-white shadow-2xl active:scale-95 transition-all flex items-center gap-2 font-semibold"
+            data-testid="button-go-to-cart"
+          >
+            <ShoppingBag className="w-5 h-5" strokeWidth={2.25} />
+            <span>Go To Cart</span>
+            {cartItems.length > 0 && (
+              <span className="ml-1 bg-white text-primary text-xs font-bold h-5 min-w-5 px-1.5 rounded-full flex items-center justify-center">
+                {cartItems.length}
+              </span>
+            )}
+          </button>
         </div>
       )}
 
@@ -762,11 +760,13 @@ export default function CameraPage() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <SafetyIcon level={selectedItem.safetyLevel} className={`w-5 h-5 shrink-0 ${
-                      selectedItem.safetyLevel === "danger" ? "text-red-500" :
-                      selectedItem.safetyLevel === "warning" ? "text-amber-500" : "text-green-600"
-                    }`} />
-                    <h2 className="font-bold text-xl leading-tight">{selectedItem.translatedName}</h2>
+                    <h2 className="font-bold text-2xl leading-tight">{selectedItem.translatedName}</h2>
+                    {(selectedItem.safetyLevel === "danger" || selectedItem.safetyLevel === "warning") && (
+                      <AlertTriangle
+                        className={`w-6 h-6 shrink-0 ${selectedItem.safetyLevel === "danger" ? "text-red-500" : "text-amber-500"}`}
+                        strokeWidth={2.5}
+                      />
+                    )}
                   </div>
                   <p className="text-sm text-muted-foreground font-medium">{selectedItem.name}</p>
                 </div>
@@ -779,33 +779,24 @@ export default function CameraPage() {
                 </button>
               </div>
 
-              <p className="text-sm text-foreground/80 leading-relaxed">{selectedItem.description}</p>
-
-              <RiskScoreInline item={selectedItem} cuisine={detectedLanguage} />
-
-              <CrossContamBadge result={crossContam.get(selectedItem.name) ?? null} />
-
-              {selectedItem.citations && selectedItem.citations.length > 0 && (
-                <CitationChainList chains={selectedItem.citations} />
-              )}
-
+              {/* Allergens block — leads the sheet, soft red surface */}
               {(selectedItem.conflictingRestrictions.length > 0 || selectedItem.allergenFlags.length > 0) && (
-                <div className="space-y-3 bg-muted/50 p-3 rounded-2xl">
+                <div className="bg-red-500/10 border border-red-500/15 p-4 rounded-2xl space-y-2">
+                  <p className="text-base font-bold text-foreground">Allergens</p>
                   {selectedItem.conflictingRestrictions.length > 0 && (
-                    <div className="flex items-start gap-2 text-sm text-red-600 font-semibold">
-                      <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                      <span>Contains: {selectedItem.conflictingRestrictions.join(", ")}</span>
-                    </div>
+                    <p className="text-sm text-foreground/90 leading-relaxed">
+                      {selectedItem.conflictingRestrictions.join(", ")}
+                    </p>
                   )}
                   {selectedItem.allergenFlags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
+                    <div className="flex flex-wrap gap-1.5 pt-1">
                       {selectedItem.allergenFlags.map((flag, i) => {
                         const matched = isMatched(flag.name);
                         return (
                           <span key={i} className={`text-xs px-2 py-1 rounded-full font-medium border ${
                             matched
-                              ? "bg-red-500/10 text-red-600 border-red-400/30"
-                              : "bg-amber-500/10 text-amber-700 border-amber-400/20"
+                              ? "bg-red-500/15 text-red-700 border-red-400/40"
+                              : "bg-white/70 text-foreground/80 border-border"
                           }`}>
                             {matched ? "⚠ " : ""}{flag.name}
                           </span>
@@ -814,6 +805,20 @@ export default function CameraPage() {
                     </div>
                   )}
                 </div>
+              )}
+
+              {/* Description */}
+              <div className="space-y-2">
+                <p className="text-base font-bold text-foreground">Description</p>
+                <p className="text-sm text-foreground/80 leading-relaxed">{selectedItem.description}</p>
+              </div>
+
+              <RiskScoreInline item={selectedItem} cuisine={detectedLanguage} />
+
+              <CrossContamBadge result={crossContam.get(selectedItem.name) ?? null} />
+
+              {selectedItem.citations && selectedItem.citations.length > 0 && (
+                <CitationChainList chains={selectedItem.citations} />
               )}
 
               <Button

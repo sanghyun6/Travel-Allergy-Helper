@@ -4,6 +4,23 @@
 
 /* iOS / Android safe-area helpers — used by sticky headers and bottom bars
    so content isn't hidden behind the Dynamic Island, notch, or home indicator. */
+
+/* Root containers respect the device safe-area insets so the whole app sits
+   below the Dynamic Island / notch and above the iOS home indicator. Pages
+   that need full-bleed (e.g. the camera preview) opt out by absolutely
+   positioning their content; their internal top/bottom bars still apply
+   safe-area padding. */
+html, body, #root {
+  background-color: hsl(var(--background));
+}
+#root {
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+  min-height: 100dvh;
+}
+
 @layer utilities {
   .pt-safe { padding-top: env(safe-area-inset-top); }
   .pb-safe { padding-bottom: env(safe-area-inset-bottom); }

@@ -145,7 +145,7 @@ export default function CameraPage() {
     // Downscale large photos before upload — full-res phone photos can be
     // 4–8MB base64 which dominates total scan time. 1600px is plenty for
     // Gemini OCR while shrinking the payload by 5–10x.
-    const sendUrl = await downscaleDataUrl(dataUrl, 1600, 0.82);
+    const sendUrl = await downscaleDataUrl(dataUrl, 1024, 0.78);
     const base64Data = sendUrl.split(",")[1];
     const detectedMime = sendUrl.split(";")[0].split(":")[1] || "image/jpeg";
     const lang = menuLanguage === "Auto-detect" ? "Unknown" : menuLanguage;

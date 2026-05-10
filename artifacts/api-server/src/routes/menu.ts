@@ -109,27 +109,19 @@ router.post("/menu/analyze", async (req, res) => {
 
   try {
     // ── Pass 1: fast layout / OCR ───────────────────────────────────────
-    const layoutPrompt = `You are an OCR + layout detector for a restaurant menu photo (written in ${menuLanguage}).
+    const layoutPrompt = `OCR a restaurant menu photo (written in ${menuLanguage}).
 
-Detect every distinct menu entry in the image. For each entry return ONLY:
-- "name": the original-language item name as printed on the menu
-- "boundingBox": tight box around the ENTIRE menu entry row (name + price + description if present)
-- "nameBox": tight box around ONLY the first line of the original-language item name (used to overlay a label on top of the foreign text)
+For each distinct menu entry return ONLY:
+- "name": the original-language item name as printed
+- "box": tight box around just the item name line, normalized integers 0–1000 (ymin,xmin,ymax,xmax; 0,0 = top-left)
 
-All boxes use normalized integers 0–1000 (0,0 = top-left, 1000,1000 = bottom-right).
+Do NOT translate, describe, or analyze ingredients. Be FAST.
 
-Do NOT translate, describe, or analyze ingredients. This pass must be FAST.
-
-Return ONLY valid JSON of shape:
-{
-  "items": [
-    { "name": "...", "boundingBox": {"ymin":0,"xmin":0,"ymax":0,"xmax":0}, "nameBox": {"ymin":0,"xmin":0,"ymax":0,"xmax":0} }
-  ],
-  "detectedLanguage": "language name"
-}`;
+Return ONLY valid JSON:
+{"items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0}}],"detectedLanguage":"language name"}`;
 
     const layoutResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
+      model: "gemini-2.5-flash-lite",
       contents: [
         {
           role: "user",
@@ -141,7 +133,8 @@ Return ONLY valid JSON of shape:
       ],
       config: {
         responseMimeType: "application/json",
-        maxOutputTokens: 4096,
+        maxOutputTokens: 2048,
+        thinkingConfig: { thinkingBudget: 0 },
         abortSignal: abortController.signal,
       },
     });
@@ -160,12 +153,17 @@ Return ONLY valid JSON of shape:
 
     const layoutItems: LayoutItem[] = rawItems
       .filter((it) => it && typeof it.name === "string" && it.name.trim().length > 0)
-      .map((it, i) => ({
-        id: i,
-        name: it.name,
-        boundingBox: it.boundingBox,
-        nameBox: it.nameBox,
-      }));
+      .map((it, i) => {
+        const box = (it as { box?: BBox; boundingBox?: BBox; nameBox?: BBox }).box
+          ?? it.boundingBox
+          ?? it.nameBox;
+        return {
+          id: i,
+          name: it.name,
+          boundingBox: box,
+          nameBox: box,
+        };
+      });
 
     send("layout", {
       items: layoutItems,
@@ -235,6 +233,7 @@ Return ONLY valid JSON, no markdown.`;
           config: {
             responseMimeType: "application/json",
             maxOutputTokens: 512,
+            thinkingConfig: { thinkingBudget: 0 },
             abortSignal: abortController.signal,
           },
         });

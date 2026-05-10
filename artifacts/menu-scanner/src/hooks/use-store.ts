@@ -45,16 +45,10 @@ export function useCart() {
   useEffect(() => {
     const stored = localStorage.getItem('cartItems');
     if (stored) {
-      try {
-        setCartItems(JSON.parse(stored));
-      } catch (e) {
-        console.error("Failed to parse cart items", e);
-      }
+      try { setCartItems(JSON.parse(stored)); } catch {}
     }
     const storedLang = localStorage.getItem('menuLanguage');
-    if (storedLang) {
-      setMenuLanguage(storedLang);
-    }
+    if (storedLang) setMenuLanguage(storedLang);
   }, []);
 
   const addToCart = (item: MenuItem, language: string) => {
@@ -75,7 +69,7 @@ export function useCart() {
       localStorage.removeItem('menuLanguage');
     }
   };
-  
+
   const clearCart = () => {
     setCartItems([]);
     setMenuLanguage(null);
@@ -84,4 +78,25 @@ export function useCart() {
   };
 
   return { cartItems, menuLanguage, addToCart, removeFromCart, clearCart };
+}
+
+export function useChatThread() {
+  const [threadId, setThreadIdState] = useState<string | null>(null);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('chatThreadId');
+    if (stored) setThreadIdState(stored);
+  }, []);
+
+  const setThreadId = (id: string) => {
+    localStorage.setItem('chatThreadId', id);
+    setThreadIdState(id);
+  };
+
+  const clearThread = () => {
+    localStorage.removeItem('chatThreadId');
+    setThreadIdState(null);
+  };
+
+  return { threadId, setThreadId, clearThread };
 }

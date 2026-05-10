@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { useHistory, useCart, type HistoryEntry, type MenuItem } from "@/context/store-context";
+import { useHistory, useCart, type HistoryEntry } from "@/context/store-context";
 import { Button } from "@/components/ui/button";
-import { Clock, Trash2, ChevronDown, ChevronUp, ShieldCheck, AlertTriangle, XCircle, RotateCcw } from "lucide-react";
+import { Clock, Trash2, ChevronDown, ChevronUp, ShieldCheck, AlertTriangle, XCircle, RotateCcw, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 function safetyIcon(level: string) {
@@ -23,10 +23,17 @@ function formatDate(ts: number) {
 
 export default function HistoryPage() {
   const [, setLocation] = useLocation();
-  const { history, removeHistoryEntry, clearHistory } = useHistory();
-  const { addToCart, cartItems } = useCart();
+  const {
+    history, historyLoading, historyError,
+    refreshHistory, removeHistoryEntry, clearHistory, reorderFromHistory,
+  } = useHistory();
+  const { cartItems } = useCart();
   const { toast } = useToast();
   const [expanded, setExpanded] = useState<string | null>(null);
+
+  useEffect(() => {
+    refreshHistory();
+  }, [refreshHistory]);
 
   const reorder = (entry: HistoryEntry) => {
     if (cartItems.length > 0) {
@@ -37,10 +44,18 @@ export default function HistoryPage() {
       });
       return;
     }
-    entry.items.forEach((item: MenuItem) => addToCart(item, entry.menuLanguage));
+    reorderFromHistory(entry);
     toast({ title: "Loaded into cart", description: `${entry.items.length} item${entry.items.length !== 1 ? "s" : ""} restored.` });
     setLocation("/cart");
   };
+
+  if (historyLoading && history.length === 0) {
+    return (
+      <div className="min-h-[100dvh] pb-20 bg-background flex flex-col items-center justify-center p-6 max-w-md mx-auto w-full">
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   if (history.length === 0) {
     return (
@@ -49,7 +64,9 @@ export default function HistoryPage() {
           <Clock className="w-10 h-10 text-muted-foreground" />
         </div>
         <h2 className="text-2xl font-bold mb-2">No saved orders yet</h2>
-        <p className="text-muted-foreground mb-8">Saved menus from your cart will appear here so you can revisit them later.</p>
+        <p className="text-muted-foreground mb-8">
+          {historyError ? "Couldn't load your history. Pull to retry." : "Anything you add to your cart will be saved here automatically."}
+        </p>
         <Button size="lg" className="rounded-xl h-14 px-8" onClick={() => setLocation("/camera")}>
           Scan a Menu
         </Button>

@@ -4,6 +4,7 @@ import menuRouter from "./menu";
 import ttsRouter from "./tts";
 import chatRouter from "./chat";
 import geminiRouter from "./gemini";
+import historyRouter from "./history";
 
 const router: IRouter = Router();
 
@@ -12,5 +13,6 @@ router.use(menuRouter);
 router.use(ttsRouter);
 router.use(chatRouter);
 router.use(geminiRouter);
+router.use(historyRouter);
 
 export default router;

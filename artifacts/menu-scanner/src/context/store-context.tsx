@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
 
 export interface UserProfile {
   restrictions: string[];
@@ -36,12 +36,34 @@ interface StoreContextValue {
   setThreadId: (id: string) => void;
   clearThread: () => void;
   history: HistoryEntry[];
-  saveCartToHistory: () => HistoryEntry | null;
-  removeHistoryEntry: (id: string) => void;
-  clearHistory: () => void;
+  historyLoading: boolean;
+  historyError: string | null;
+  refreshHistory: () => Promise<void>;
+  removeHistoryEntry: (id: string) => Promise<void>;
+  clearHistory: () => Promise<void>;
+  reorderFromHistory: (entry: HistoryEntry) => void;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
+
+const API_BASE = `${import.meta.env.BASE_URL}api`.replace(/\/+/g, "/");
+
+function getDeviceId(): string {
+  let id = localStorage.getItem("deviceId");
+  if (!id) {
+    id = (typeof crypto !== "undefined" && "randomUUID" in crypto)
+      ? crypto.randomUUID()
+      : `dev-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem("deviceId", id);
+  }
+  return id;
+}
+
+function newSessionId(): string {
+  return (typeof crypto !== "undefined" && "randomUUID" in crypto)
+    ? crypto.randomUUID()
+    : `sess-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
 
 export function StoreProvider({ children }: { children: ReactNode }) {
   const [profile, setProfileState] = useState<UserProfile | null>(null);
@@ -50,8 +72,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [menuLanguage, setMenuLanguageState] = useState<string | null>(null);
   const [threadId, setThreadIdState] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState<string | null>(null);
+
+  const sessionIdRef = useRef<string | null>(null);
+  const upsertTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const deviceIdRef = useRef<string>("");
 
   useEffect(() => {
+    deviceIdRef.current = getDeviceId();
     try {
       const p = localStorage.getItem("userProfile");
       if (p) setProfileState(JSON.parse(p));
@@ -60,14 +89,12 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const c = localStorage.getItem("cartItems");
       if (c) setCartItems(JSON.parse(c));
     } catch {}
-    try {
-      const h = localStorage.getItem("orderHistory");
-      if (h) setHistory(JSON.parse(h));
-    } catch {}
     const lang = localStorage.getItem("menuLanguage");
     if (lang) setMenuLanguageState(lang);
     const tid = localStorage.getItem("chatThreadId");
     if (tid) setThreadIdState(tid);
+    const sid = localStorage.getItem("currentSessionId");
+    if (sid) sessionIdRef.current = sid;
     setIsLoaded(true);
   }, []);
 
@@ -76,35 +103,67 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setProfileState(p);
   }, []);
 
+  const persistSession = useCallback((items: MenuItem[], language: string | null) => {
+    if (upsertTimerRef.current) clearTimeout(upsertTimerRef.current);
+    upsertTimerRef.current = setTimeout(() => {
+      const sessionId = sessionIdRef.current;
+      if (!sessionId) return;
+      const lang = language || "Unknown";
+      fetch(`${API_BASE}/history/upsert`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-device-id": deviceIdRef.current,
+        },
+        body: JSON.stringify({ sessionId, menuLanguage: lang, items }),
+      }).catch((err) => {
+        console.error("history upsert failed", err);
+      });
+    }, 350);
+  }, []);
+
   const addToCart = useCallback((item: MenuItem, language: string) => {
-    setCartItems(prev => {
+    if (!sessionIdRef.current) {
+      const sid = newSessionId();
+      sessionIdRef.current = sid;
+      localStorage.setItem("currentSessionId", sid);
+    }
+    setCartItems((prev) => {
       const next = [...prev, item];
       localStorage.setItem("cartItems", JSON.stringify(next));
+      persistSession(next, language);
       return next;
     });
     setMenuLanguageState(language);
     localStorage.setItem("menuLanguage", language);
-  }, []);
+  }, [persistSession]);
 
   const removeFromCart = useCallback((index: number) => {
-    setCartItems(prev => {
+    setCartItems((prev) => {
       const next = [...prev];
       next.splice(index, 1);
       localStorage.setItem("cartItems", JSON.stringify(next));
+      const lang = next.length > 0 ? localStorage.getItem("menuLanguage") : null;
+      persistSession(next, lang);
       if (next.length === 0) {
         setMenuLanguageState(null);
         localStorage.removeItem("menuLanguage");
+        sessionIdRef.current = null;
+        localStorage.removeItem("currentSessionId");
       }
       return next;
     });
-  }, []);
+  }, [persistSession]);
 
   const clearCart = useCallback(() => {
+    persistSession([], null);
     setCartItems([]);
     setMenuLanguageState(null);
     localStorage.removeItem("cartItems");
     localStorage.removeItem("menuLanguage");
-  }, []);
+    sessionIdRef.current = null;
+    localStorage.removeItem("currentSessionId");
+  }, [persistSession]);
 
   const setThreadId = useCallback((id: string) => {
     localStorage.setItem("chatThreadId", id);
@@ -116,50 +175,66 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setThreadIdState(null);
   }, []);
 
-  const saveCartToHistory = useCallback<() => HistoryEntry | null>(() => {
-    let saved: HistoryEntry | null = null;
-    setCartItems((currentCart) => {
-      if (currentCart.length === 0) return currentCart;
-      const lang = localStorage.getItem("menuLanguage") || "Unknown";
-      const entry: HistoryEntry = {
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        savedAt: Date.now(),
-        menuLanguage: lang,
-        items: currentCart,
-      };
-      saved = entry;
-      setHistory((prev) => {
-        const next = [entry, ...prev].slice(0, 50);
-        localStorage.setItem("orderHistory", JSON.stringify(next));
-        return next;
+  const refreshHistory = useCallback(async () => {
+    setHistoryLoading(true);
+    setHistoryError(null);
+    try {
+      const res = await fetch(`${API_BASE}/history`, {
+        headers: { "x-device-id": deviceIdRef.current },
       });
-      localStorage.removeItem("cartItems");
-      localStorage.removeItem("menuLanguage");
-      setMenuLanguageState(null);
-      return [];
-    });
-    return saved;
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setHistory(Array.isArray(data?.entries) ? data.entries : []);
+    } catch (err) {
+      console.error("refreshHistory error", err);
+      setHistoryError(err instanceof Error ? err.message : "Failed to load history");
+    } finally {
+      setHistoryLoading(false);
+    }
   }, []);
 
-  const removeHistoryEntry = useCallback((id: string) => {
-    setHistory((prev) => {
-      const next = prev.filter((e) => e.id !== id);
-      localStorage.setItem("orderHistory", JSON.stringify(next));
-      return next;
-    });
+  const removeHistoryEntry = useCallback(async (id: string) => {
+    setHistory((prev) => prev.filter((e) => e.id !== id));
+    try {
+      await fetch(`${API_BASE}/history/${encodeURIComponent(id)}`, {
+        method: "DELETE",
+        headers: { "x-device-id": deviceIdRef.current },
+      });
+    } catch (err) {
+      console.error("removeHistoryEntry error", err);
+    }
   }, []);
 
-  const clearHistory = useCallback(() => {
+  const clearHistory = useCallback(async () => {
     setHistory([]);
-    localStorage.removeItem("orderHistory");
+    try {
+      await fetch(`${API_BASE}/history`, {
+        method: "DELETE",
+        headers: { "x-device-id": deviceIdRef.current },
+      });
+    } catch (err) {
+      console.error("clearHistory error", err);
+    }
   }, []);
+
+  const reorderFromHistory = useCallback((entry: HistoryEntry) => {
+    // Adopt the historical sessionId so further edits update the same doc
+    sessionIdRef.current = entry.id;
+    localStorage.setItem("currentSessionId", entry.id);
+    localStorage.setItem("cartItems", JSON.stringify(entry.items));
+    localStorage.setItem("menuLanguage", entry.menuLanguage);
+    setCartItems(entry.items);
+    setMenuLanguageState(entry.menuLanguage);
+    persistSession(entry.items, entry.menuLanguage);
+  }, [persistSession]);
 
   return (
     <StoreContext.Provider value={{
       profile, isLoaded, setProfile,
       cartItems, menuLanguage, addToCart, removeFromCart, clearCart,
       threadId, setThreadId, clearThread,
-      history, saveCartToHistory, removeHistoryEntry, clearHistory,
+      history, historyLoading, historyError,
+      refreshHistory, removeHistoryEntry, clearHistory, reorderFromHistory,
     }}>
       {children}
     </StoreContext.Provider>
@@ -188,6 +263,12 @@ export function useChatThread() {
 }
 
 export function useHistory() {
-  const { history, saveCartToHistory, removeHistoryEntry, clearHistory } = useStore();
-  return { history, saveCartToHistory, removeHistoryEntry, clearHistory };
+  const {
+    history, historyLoading, historyError,
+    refreshHistory, removeHistoryEntry, clearHistory, reorderFromHistory,
+  } = useStore();
+  return {
+    history, historyLoading, historyError,
+    refreshHistory, removeHistoryEntry, clearHistory, reorderFromHistory,
+  };
 }

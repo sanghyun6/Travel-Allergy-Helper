@@ -703,7 +703,7 @@ export default function CameraPage() {
             <button
               type="button"
               onClick={() => setLocation("/cart")}
-              className="relative w-14 h-14 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center text-white"
+              className="relative w-14 h-14 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center text-white"
               aria-label="Past order"
               data-testid="button-past-order"
             >
@@ -729,7 +729,7 @@ export default function CameraPage() {
             <button
               type="button"
               onClick={() => setLocation("/settings")}
-              className="w-14 h-14 rounded-2xl bg-white/15 hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center text-white"
+              className="w-14 h-14 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center text-white"
               aria-label="Settings"
               data-testid="button-settings"
             >

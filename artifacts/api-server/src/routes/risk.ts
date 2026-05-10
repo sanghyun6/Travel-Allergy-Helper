@@ -9,6 +9,7 @@ import {
   trainPersonalModel,
   type RiskModel,
 } from "../lib/risk/model";
+import { normalizeAllergen } from "../lib/cross-contam";
 
 const router = Router();
 
@@ -166,22 +167,76 @@ router.post("/risk/score", async (req, res) => {
     return;
   }
   const items = Array.isArray(req.body?.items) ? (req.body.items as RawDish[]) : [];
+  const rawRestrictions = Array.isArray(req.body?.restrictions)
+    ? (req.body.restrictions as unknown[]).filter((s): s is string => typeof s === "string")
+    : [];
+  const userAllergenSlugs = new Set<string>();
+  for (const r of rawRestrictions) {
+    const slug = normalizeAllergen(r);
+    if (slug) userAllergenSlugs.add(slug);
+  }
+
+  // No restrictions → short-circuit to score 0 with no model call. Avoids
+  // showing "Moderate"/"High" for users who haven't told us anything to
+  // protect them from.
+  if (rawRestrictions.length === 0) {
+    res.json({
+      personalized: false,
+      modelVersion: 0,
+      items: items.map((d) => ({
+        name: d.name,
+        score: 0,
+        personalized: false,
+        modelVersion: 0,
+        cuisine: "",
+        attributions: [],
+      })),
+    });
+    return;
+  }
+
   const userModel = await loadUserModel(userId);
   const baseline = getBaselineModel();
   const model = userModel ?? baseline;
   const personalized = !!userModel;
 
   const scored = items.map((dish) => {
-    const { vector, meta } = buildFeatures(dish);
+    const { vector, meta } = buildFeatures(dish, userAllergenSlugs);
     const prob = predictProb(model, vector);
-    const attributions = topAttributions(model, vector, 3).map((a) => ({
-      feature: a.name,
-      label: humanizeFeature(a.name),
-      contribution: Number(a.contribution.toFixed(4)),
-    }));
+    // Did THIS dish actually trigger any of the user's listed allergens?
+    // We check both the explicit `allergenFlags`/`citations` slugs and the
+    // already-narrowed `conflictingRestrictions` list. If nothing intersects,
+    // the score is meaningless for the user — clamp to "Low risk" so the
+    // baseline model's ingredient/cuisine weights cannot push a fish dish
+    // to "Moderate" for a peanut-only user.
+    const dishSlugs = new Set<string>();
+    for (const f of dish.allergenFlags ?? []) {
+      const s = normalizeAllergen(f.name);
+      if (s) dishSlugs.add(s);
+    }
+    for (const c of dish.citations ?? []) {
+      if (c?.allergen?.slug) dishSlugs.add(c.allergen.slug);
+    }
+    for (const c of dish.conflictingRestrictions ?? []) {
+      const s = normalizeAllergen(c);
+      if (s) dishSlugs.add(s);
+    }
+    let userTriggered = false;
+    for (const s of dishSlugs) {
+      if (userAllergenSlugs.has(s)) { userTriggered = true; break; }
+    }
+    const rawScore = Math.round(prob * 100);
+    const score = userTriggered ? rawScore : Math.min(rawScore, 30);
+    const attributions = userTriggered
+      ? topAttributions(model, vector, 3).map((a) => ({
+          feature: a.name,
+          label: humanizeFeature(a.name),
+          contribution: Number(a.contribution.toFixed(4)),
+        }))
+      : [];
     return {
       name: dish.name,
-      score: Math.round(prob * 100),
+      score,
       personalized,
       modelVersion: model.version,
       cuisine: meta.cuisine,

@@ -24,6 +24,7 @@ import { CitationChainList } from "@/components/citation-chain";
 import { RiskScoreBadge, OutcomeButtons, useRiskScore } from "@/components/risk-score";
 import { CrossContamBadge, ReviewNoteInput } from "@/components/cross-contamination";
 import { scoreCrossContamination, type CrossContamItem } from "@/lib/cross-contam-api";
+import { normalizeAllergen, buildUserAllergenSet } from "@/lib/allergen-match";
 
 const MENU_LANGUAGES = [
   "Auto-detect",
@@ -72,7 +73,11 @@ function pillColors(level: string) {
   }
 }
 
-function RiskScoreInline({ item, cuisine }: { item: AnyItem; cuisine: string }) {
+function RiskScoreInline({
+  item,
+  cuisine,
+  restrictions,
+}: { item: AnyItem; cuisine: string; restrictions: string[] }) {
   const dish = useMemo(
     () => ({
       name: item.name,
@@ -88,7 +93,9 @@ function RiskScoreInline({ item, cuisine }: { item: AnyItem; cuisine: string }) 
     }),
     [item.name, item.translatedName, item.description, cuisine, item.allergenFlags, item.conflictingRestrictions, item.citations],
   );
-  const { data, loading } = useRiskScore(dish);
+  const { data, loading } = useRiskScore(dish, restrictions);
+  // No restrictions → hide the badge entirely (Step 2/4 of the safety task).
+  if (restrictions.length === 0) return null;
   return <RiskScoreBadge result={data} loading={loading} />;
 }
 
@@ -325,11 +332,20 @@ export default function CameraPage() {
     }
   };
 
-  const userRestrictions = new Set((profile?.restrictions || []).map(r => r.toLowerCase()));
+  // Alias-aware match (Dairy↔Milk, Gluten↔Wheat, Shellfish↔Shrimp, …).
+  // Falls back to substring matching for raw user-typed restrictions that
+  // don't normalize to a known allergen slug (e.g. "MSG", "cilantro").
+  const userAllergenSlugs = useMemo(
+    () => buildUserAllergenSet(profile?.restrictions || []),
+    [profile?.restrictions],
+  );
+  const userRawTokens = (profile?.restrictions || []).map((r) => r.toLowerCase());
   const isMatched = (name: string) => {
+    const slug = normalizeAllergen(name);
+    if (slug && userAllergenSlugs.has(slug)) return true;
     const n = name.toLowerCase();
-    for (const r of userRestrictions) {
-      if (n.includes(r) || r.includes(n)) return true;
+    for (const r of userRawTokens) {
+      if (!normalizeAllergen(r) && (n.includes(r) || r.includes(n))) return true;
     }
     return false;
   };
@@ -832,33 +848,59 @@ export default function CameraPage() {
                 </button>
               </div>
 
-              {/* Allergens block — leads the sheet, soft red surface */}
-              {(selectedItem.conflictingRestrictions.length > 0 || selectedItem.allergenFlags.length > 0) && (
-                <div className="bg-red-500/10 border border-red-500/15 p-4 rounded-2xl space-y-2">
-                  <p className="text-base font-bold text-foreground">Allergens</p>
-                  {selectedItem.conflictingRestrictions.length > 0 && (
-                    <p className="text-sm text-foreground/90 leading-relaxed">
-                      {selectedItem.conflictingRestrictions.join(", ")}
-                    </p>
-                  )}
-                  {selectedItem.allergenFlags.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5 pt-1">
-                      {selectedItem.allergenFlags.map((flag, i) => {
-                        const matched = isMatched(flag.name);
-                        return (
-                          <span key={i} className={`text-xs px-2 py-1 rounded-full font-medium border ${
-                            matched
-                              ? "bg-red-500/15 text-red-700 border-red-400/40"
-                              : "bg-white/70 text-foreground/80 border-border"
-                          }`}>
-                            {matched ? "⚠ " : ""}{flag.name}
-                          </span>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
+              {/* Allergens — split into "affects you" (red surface) and
+                  informational "also contains" (neutral surface). The header
+                  surface only appears when there is a real conflict against
+                  the user's listed restrictions. */}
+              {(() => {
+                const matchedFlags = selectedItem.allergenFlags.filter((f) => isMatched(f.name));
+                const otherFlags = selectedItem.allergenFlags.filter((f) => !isMatched(f.name));
+                const hasConflict =
+                  selectedItem.conflictingRestrictions.length > 0 || matchedFlags.length > 0;
+                return (
+                  <>
+                    {hasConflict && (
+                      <div className="bg-red-500/10 border border-red-500/15 p-4 rounded-2xl space-y-2">
+                        <p className="text-base font-bold text-foreground">Affects you</p>
+                        {selectedItem.conflictingRestrictions.length > 0 && (
+                          <p className="text-sm text-foreground/90 leading-relaxed">
+                            {selectedItem.conflictingRestrictions.join(", ")}
+                          </p>
+                        )}
+                        {matchedFlags.length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {matchedFlags.map((flag, i) => (
+                              <span
+                                key={i}
+                                className="text-xs px-2 py-1 rounded-full font-medium border bg-red-500/15 text-red-700 border-red-400/40"
+                              >
+                                ⚠ {flag.name}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {otherFlags.length > 0 && (
+                      <div className="p-3 rounded-2xl bg-muted/40 space-y-2">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          Also contains
+                        </p>
+                        <div className="flex flex-wrap gap-1.5">
+                          {otherFlags.map((flag, i) => (
+                            <span
+                              key={i}
+                              className="text-xs px-2 py-1 rounded-full font-medium border bg-background text-foreground/70 border-border"
+                            >
+                              {flag.name}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               {/* Description */}
               <div className="space-y-2">
@@ -866,7 +908,11 @@ export default function CameraPage() {
                 <p className="text-sm text-foreground/80 leading-relaxed">{selectedItem.description}</p>
               </div>
 
-              <RiskScoreInline item={selectedItem} cuisine={detectedLanguage} />
+              <RiskScoreInline
+                item={selectedItem}
+                cuisine={detectedLanguage}
+                restrictions={profile?.restrictions || []}
+              />
 
               <CrossContamBadge result={crossContam.get(selectedItem.name) ?? null} />
 

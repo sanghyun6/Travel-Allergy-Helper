@@ -46,13 +46,17 @@ export type DishForRisk = {
   citations?: { allergen?: { slug?: string } }[];
 };
 
-export async function scoreRisk(items: DishForRisk[]): Promise<RiskScoreResult | null> {
+export async function scoreRisk(
+  items: DishForRisk[],
+  restrictions: string[] = [],
+): Promise<RiskScoreResult | null> {
   if (items.length === 0) return { personalized: false, modelVersion: 0, items: [] };
   try {
     const res = await fetch(`${API_BASE}/risk/score`, {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-device-id": deviceId() },
       body: JSON.stringify({
+        restrictions,
         items: items.map((d) => ({
           name: d.name,
           translatedName: d.translatedName,

@@ -131,17 +131,22 @@ export function OutcomeButtons({
   );
 }
 
-export function useRiskScore(dish: DishForRisk | null) {
+export function useRiskScore(dish: DishForRisk | null, restrictions: string[] = []) {
   const [data, setData] = useState<RiskScoreItem | null>(null);
   const [loading, setLoading] = useState(false);
+  // When the user has no restrictions there is nothing to personalize against
+  // — skip the call entirely so the badge stays hidden.
+  const skip = !dish || restrictions.length === 0;
+  const restrictionsKey = restrictions.join("|");
   useEffect(() => {
     let cancelled = false;
-    if (!dish) {
+    if (skip) {
       setData(null);
+      setLoading(false);
       return;
     }
     setLoading(true);
-    scoreRisk([dish]).then((r) => {
+    scoreRisk([dish!], restrictions).then((r) => {
       if (cancelled) return;
       setData(r?.items?.[0] ?? null);
       setLoading(false);
@@ -149,6 +154,6 @@ export function useRiskScore(dish: DishForRisk | null) {
     return () => {
       cancelled = true;
     };
-  }, [dish?.name]);
+  }, [dish?.name, restrictionsKey, skip]);
   return { data, loading };
 }

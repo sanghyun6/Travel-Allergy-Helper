@@ -67,9 +67,62 @@ import {
   evaluateDish,
   extractFactsFromText,
   loadFactsForScopes,
+  normalizeAllergen,
   normalizeAllergenList,
   normalizeCuisine,
 } from "../lib/cross-contam";
+
+/**
+ * Deterministic safety guardrail. Re-derives `safetyLevel` and
+ * `conflictingRestrictions` from the user's listed restrictions so the
+ * model's classification can never flag allergens the user did not list.
+ *
+ * Rules:
+ *  - No restrictions → "safe", empty conflicts.
+ *  - conflictingRestrictions filtered to entries that normalize to one
+ *    of the user's restrictions (verbatim copy preserved when possible).
+ *  - allergenFlags whose canonical slug matches a user restriction also
+ *    count as a conflict (added back as the user's verbatim term).
+ *  - safetyLevel: any conflict → keep model's danger/warning, default to
+ *    "warning" if model said safe but a flag matched. No conflict → "safe".
+ */
+function enforceUserSafety(
+  item: AnalyzedItem,
+  userRestrictions: string[],
+  userSlugSet: Set<string>,
+  userSlugToTerm: Map<string, string>,
+): AnalyzedItem {
+  if (userRestrictions.length === 0) {
+    return { ...item, safetyLevel: "safe", conflictingRestrictions: [] };
+  }
+  const conflicts = new Set<string>();
+  // Keep model's conflicts only if they normalize to a user slug.
+  for (const c of item.conflictingRestrictions) {
+    const slug = normalizeAllergen(c);
+    if (slug && userSlugSet.has(slug)) {
+      conflicts.add(userSlugToTerm.get(slug) ?? c);
+    }
+  }
+  // Cross-reference allergen flags against the user's restrictions.
+  let modelSawSafe = item.safetyLevel === "safe";
+  for (const f of item.allergenFlags) {
+    const slug = normalizeAllergen(f.name);
+    if (slug && userSlugSet.has(slug)) {
+      conflicts.add(userSlugToTerm.get(slug) ?? f.name);
+    }
+  }
+  const conflictList = Array.from(conflicts);
+  let safetyLevel: AnalyzedItem["safetyLevel"];
+  if (conflictList.length === 0) {
+    safetyLevel = "safe";
+  } else if (item.safetyLevel === "danger") {
+    safetyLevel = "danger";
+  } else {
+    // Model said safe or warning but a real conflict exists → at minimum warn.
+    safetyLevel = modelSawSafe ? "warning" : item.safetyLevel;
+  }
+  return { ...item, safetyLevel, conflictingRestrictions: conflictList };
+}
 
 /**
  * Heuristically pull disclaimer-like sentences out of OCR/menu text so we
@@ -141,6 +194,19 @@ router.post("/menu/analyze", async (req, res) => {
   }
   const restrictionList =
     restrictions.length > 0 ? restrictions.join(", ") : "None specified";
+
+  // Build the user-restriction lookup once. Used by enforceUserSafety to
+  // deterministically gate every dish's safetyLevel server-side, regardless
+  // of what Gemini returns.
+  const userSlugSet = new Set<string>();
+  const userSlugToTerm = new Map<string, string>();
+  for (const r of restrictions) {
+    const slug = normalizeAllergen(r);
+    if (slug) {
+      userSlugSet.add(slug);
+      if (!userSlugToTerm.has(slug)) userSlugToTerm.set(slug, r);
+    }
+  }
 
   // ── SSE setup ─────────────────────────────────────────────────────────
   res.setHeader("Content-Type", "text/event-stream");
@@ -270,7 +336,7 @@ Return ONLY valid JSON of shape:
           it.safetyLevel === "warning" ||
           it.safetyLevel === "safe"
             ? it.safetyLevel
-            : "warning",
+            : "safe", // Default to safe; enforceUserSafety will upgrade if a user-listed allergen actually matches.
         conflictingRestrictions: Array.isArray(it.conflictingRestrictions)
           ? (it.conflictingRestrictions as unknown[]).filter(
               (s): s is string => typeof s === "string",
@@ -361,7 +427,8 @@ Return ONLY valid JSON of shape:
               const obj = JSON.parse(slice) as RawItem;
               if (obj && typeof obj.name === "string" && obj.name.trim()) {
                 const id = nextId++;
-                const item = normalize(obj, id);
+                const raw = normalize(obj, id);
+                const item = enforceUserSafety(raw, restrictions, userSlugSet, userSlugToTerm) as typeof raw;
                 send("item", { id, item });
                 emittedDishes.push({
                   name: item.name,
@@ -436,7 +503,8 @@ Return ONLY valid JSON of shape:
         for (const obj of arr) {
           if (obj && typeof obj.name === "string" && obj.name.trim()) {
             const id = nextId++;
-            const item = normalize(obj, id);
+            const raw = normalize(obj, id);
+            const item = enforceUserSafety(raw, restrictions, userSlugSet, userSlugToTerm) as typeof raw;
             send("item", { id, item });
             emittedDishes.push({
               name: item.name,

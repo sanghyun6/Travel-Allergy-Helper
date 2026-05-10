@@ -169,7 +169,18 @@ function detectDerivatives(dish: RawDish): Set<string> {
   return set;
 }
 
-export function buildFeatures(dish: RawDish): {
+export function buildFeatures(
+  dish: RawDish,
+  /**
+   * Optional set of canonical allergen slugs the user has actually listed
+   * as restrictions. When provided, allergen/citation/severity/conflict
+   * features for slugs OUTSIDE this set are zeroed so a fish/gluten dish
+   * cannot drive the personalized risk for, say, a peanut-only user.
+   * Pass `undefined` (default) to keep the original "all-allergens" behavior
+   * — used during training so the model still learns from every signal.
+   */
+  userAllergenSlugs?: Set<string> | null,
+): {
   vector: number[];
   meta: { cuisine: string; derivatives: string[]; allergenSlugs: string[] };
 } {
@@ -180,17 +191,26 @@ export function buildFeatures(dish: RawDish): {
   const emb = ingredientEmbedding(ingTokens);
   for (let i = 0; i < 8; i++) v[idx++] = emb[i];
 
+  // Treat any provided set as scoped — even if it's empty (e.g. user has
+  // restrictions but none normalized to a known allergen slug). Pass
+  // `undefined`/`null` to keep the original "all-allergens" behavior used
+  // for training. This way features stay zero when the caller explicitly
+  // says "no in-scope allergens", matching the scoping contract.
+  const scoped = userAllergenSlugs != null;
+  const inScope = (slug: string) => !scoped || userAllergenSlugs!.has(slug);
+
   const flagSlugs = new Set<string>();
   let highCount = 0;
   let medCount = 0;
   for (const f of dish.allergenFlags ?? []) {
     const slug = allergenSlugFromName(f.name);
     if (slug) flagSlugs.add(slug);
+    if (slug && !inScope(slug)) continue;
     if (f.severity === "high") highCount++;
     else if (f.severity === "medium") medCount++;
   }
   for (const a of ALLERGENS) {
-    v[idx++] = flagSlugs.has(a) ? 1 : 0;
+    v[idx++] = flagSlugs.has(a) && inScope(a) ? 1 : 0;
   }
 
   const citationSlugs = new Set<string>();
@@ -198,7 +218,7 @@ export function buildFeatures(dish: RawDish): {
     if (c?.allergen?.slug) citationSlugs.add(c.allergen.slug);
   }
   for (const a of ALLERGENS) {
-    v[idx++] = citationSlugs.has(a) ? 1 : 0;
+    v[idx++] = citationSlugs.has(a) && inScope(a) ? 1 : 0;
   }
 
   const cuisine = detectCuisine(dish);
@@ -211,8 +231,16 @@ export function buildFeatures(dish: RawDish): {
     v[idx++] = derivs.has(d) ? 1 : 0;
   }
 
+  // Restrict conflict count to user-listed allergens too (if scoped).
+  const scopedConflicts = scoped
+    ? (dish.conflictingRestrictions ?? []).filter((c) => {
+        const s = allergenSlugFromName(c);
+        return s ? userAllergenSlugs!.has(s) : false;
+      }).length
+    : (dish.conflictingRestrictions?.length ?? 0);
+
   v[idx++] = Math.min(1, (dish.ingredients?.length ?? 0) / 10);
-  v[idx++] = Math.min(1, (dish.conflictingRestrictions?.length ?? 0) / 5);
+  v[idx++] = Math.min(1, scopedConflicts / 5);
   v[idx++] = Math.min(1, highCount / 4);
   v[idx++] = Math.min(1, medCount / 4);
 

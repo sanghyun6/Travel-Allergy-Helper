@@ -298,18 +298,15 @@ export default function CameraPage() {
                     onClick={() => setSelectedItem(isSelected ? null : item)}
                     style={{ left: `${cx}%`, top: `${ty}%`, transform: "translateX(-50%)" }}
                     className={`
-                      absolute z-10 flex flex-col items-start px-2 py-1 rounded-xl border text-xs font-semibold
+                      absolute z-10 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-semibold
                       shadow-lg backdrop-blur-sm whitespace-nowrap transition-all active:scale-95 max-w-[44%]
                       ${pillColors(item.safetyLevel)}
                       ${isSelected ? "ring-2 ring-white scale-105" : ""}
                     `}
                     data-testid={`pin-menu-item-${idx}`}
                   >
-                    <span className="flex items-center gap-1">
-                      <SafetyIcon level={item.safetyLevel} className="w-3 h-3 shrink-0" />
-                      <span className="truncate">{item.name}</span>
-                    </span>
-                    <span className="text-white/80 font-normal truncate w-full">{item.translatedName}</span>
+                    <SafetyIcon level={item.safetyLevel} className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{item.translatedName}</span>
                   </button>
                 );
               })}

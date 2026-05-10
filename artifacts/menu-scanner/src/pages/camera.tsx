@@ -298,15 +298,18 @@ export default function CameraPage() {
                     onClick={() => setSelectedItem(isSelected ? null : item)}
                     style={{ left: `${cx}%`, top: `${ty}%`, transform: "translateX(-50%)" }}
                     className={`
-                      absolute z-10 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-semibold
-                      shadow-lg backdrop-blur-sm whitespace-nowrap transition-all active:scale-95
+                      absolute z-10 flex flex-col items-start px-2 py-1 rounded-xl border text-xs font-semibold
+                      shadow-lg backdrop-blur-sm whitespace-nowrap transition-all active:scale-95 max-w-[44%]
                       ${pillColors(item.safetyLevel)}
                       ${isSelected ? "ring-2 ring-white scale-105" : ""}
                     `}
                     data-testid={`pin-menu-item-${idx}`}
                   >
-                    <SafetyIcon level={item.safetyLevel} className="w-3 h-3 shrink-0" />
-                    {item.translatedName}
+                    <span className="flex items-center gap-1">
+                      <SafetyIcon level={item.safetyLevel} className="w-3 h-3 shrink-0" />
+                      <span className="truncate">{item.name}</span>
+                    </span>
+                    <span className="text-white/80 font-normal truncate w-full">{item.translatedName}</span>
                   </button>
                 );
               })}
@@ -363,17 +366,18 @@ export default function CameraPage() {
           />
 
           {/* Sheet */}
-          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 rounded-t-3xl bg-background shadow-2xl border-t animate-in slide-in-from-bottom-8 duration-300">
+          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 rounded-t-3xl bg-background shadow-2xl border-t animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[80dvh]">
 
             {/* Cropped photo strip */}
             {selectedItem.boundingBox && imagePreview && (
               <div
-                className="w-full h-36 rounded-t-3xl"
+                className="w-full h-36 rounded-t-3xl shrink-0"
                 style={cropStyle(selectedItem.boundingBox, imagePreview)}
                 aria-hidden="true"
               />
             )}
 
+            <div className="overflow-y-auto overscroll-contain">
             <div className="p-5 space-y-4">
               {/* Header */}
               <div className="flex items-start justify-between gap-3">
@@ -441,6 +445,7 @@ export default function CameraPage() {
                   <><Plus className="w-4 h-4 mr-2" /> Add to Order</>
                 )}
               </Button>
+            </div>
             </div>
           </div>
         </>

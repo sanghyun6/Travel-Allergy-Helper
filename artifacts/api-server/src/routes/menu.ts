@@ -34,6 +34,40 @@ type AnalyzedItem = {
   citations?: CitationChain[];
 };
 
+import {
+  cuisineFacts,
+  evaluateDish,
+  extractFactsFromText,
+  loadFactsForScopes,
+  normalizeAllergenList,
+  normalizeCuisine,
+} from "../lib/cross-contam";
+
+/**
+ * Heuristically pull disclaimer-like sentences out of OCR/menu text so we
+ * can run them through the LLM fact-extractor at scan time.
+ * Conservative: only return sentences mentioning explicit cross-contact
+ * keywords to keep token cost (and false positives) bounded.
+ */
+function findMenuDisclaimerText(buffer: string): string {
+  if (!buffer) return "";
+  const KEYWORDS =
+    /\b(may contain|cross[- ]contam|cross[- ]contact|shared (fryer|grill|wok|kitchen|equipment|utensil)|cooked in (the same|shared)|peanut oil|nut[- ]free|gluten[- ]free kitchen|allergen|allergy notice|dedicated fryer|prepared in a kitchen)\b/i;
+  // Strip JSON noise: keep alphanumeric & punctuation runs.
+  const text = buffer
+    .replace(/[{}\[\]"]/g, " ")
+    .replace(/\s+/g, " ");
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  const hits = sentences.filter((s) => KEYWORDS.test(s) && s.length < 400);
+  // Cap at ~2k chars to bound LLM cost.
+  let out = "";
+  for (const s of hits) {
+    if (out.length + s.length > 2000) break;
+    out += (out ? " " : "") + s.trim();
+  }
+  return out;
+}
+
 // Map of common restriction phrases to allergen slugs in the knowledge graph.
 function restrictionsToAllergenSlugs(restrictions: string[]): string[] {
   const out = new Set<string>();
@@ -232,6 +266,9 @@ Return ONLY valid JSON of shape:
     let layoutSent = false;
     let detectedLanguage = menuLanguage;
     let nextId = 0;
+    // Track emitted items so we can score cross-contamination as a final
+    // event on the same SSE stream (Step 4 of the cross-contam contract).
+    const emittedDishes: { name: string; translatedName?: string; description?: string }[] = [];
 
     const tryEmitDetectedLanguage = () => {
       if (layoutSent) return;
@@ -289,6 +326,11 @@ Return ONLY valid JSON of shape:
                 const id = nextId++;
                 const item = normalize(obj, id);
                 send("item", { id, item });
+                emittedDishes.push({
+                  name: item.name,
+                  translatedName: item.translatedName,
+                  description: item.description,
+                });
                 send("progress", { completed: id + 1, failed: 0, total: id + 1 });
               }
             } catch {
@@ -357,7 +399,13 @@ Return ONLY valid JSON of shape:
         for (const obj of arr) {
           if (obj && typeof obj.name === "string" && obj.name.trim()) {
             const id = nextId++;
-            send("item", { id, item: normalize(obj, id) });
+            const item = normalize(obj, id);
+            send("item", { id, item });
+            emittedDishes.push({
+              name: item.name,
+              translatedName: item.translatedName,
+              description: item.description,
+            });
           }
         }
       } catch {
@@ -368,6 +416,81 @@ Return ONLY valid JSON of shape:
     void buildCitationChains; // citations now best-effort and skipped in the hot path
 
     send("progress", { completed: nextId, failed: 0, total: nextId });
+
+    // Score cross-contamination for the whole batch and emit it as the
+    // final event before "done". This is the in-stream contract referenced
+    // by Step 4 of the cross-contam task — the per-dish badges/traces ship
+    // with the scan results in one connection.
+    try {
+      const allergens = normalizeAllergenList(restrictions);
+      if (allergens.length > 0 && emittedDishes.length > 0) {
+        const cuisine = normalizeCuisine(detectedLanguage ?? menuLanguage);
+        const cFacts = cuisineFacts(cuisine);
+
+        // Auto-extract menu disclaimers from the OCR buffer for THIS
+        // request only. We deliberately do NOT persist these to the
+        // shared cuisine scope: the request has no stable restaurant
+        // identity, so persisting would let one restaurant's disclaimer
+        // poison the cuisine baseline that every other restaurant in
+        // that cuisine inherits. Kept ephemeral instead.
+        let extractedDisclaimerFacts: typeof cFacts = [];
+        if (cuisine) {
+          const disclaimer = findMenuDisclaimerText(buffer);
+          if (disclaimer) {
+            try {
+              extractedDisclaimerFacts = await extractFactsFromText(
+                disclaimer,
+                { kind: "cuisine", value: cuisine },
+                "menu_disclaimer",
+              );
+            } catch (e) {
+              console.warn("[menu/analyze] disclaimer extraction failed:", e);
+            }
+          }
+        }
+
+        // Merge: cuisine defaults + persisted cuisine-scoped facts
+        // (curated/seeded only, since we no longer write to this scope
+        // from untrusted inputs) + the request-local disclaimer facts
+        // we just extracted. Restaurant-scoped overrides flow through
+        // the explicit /cross-contamination/score endpoint.
+        const persistedCuisineFacts = cuisine
+          ? await loadFactsForScopes([{ kind: "cuisine", value: cuisine }]).catch(() => [])
+          : [];
+        const merged = [
+          ...cFacts,
+          ...persistedCuisineFacts,
+          ...extractedDisclaimerFacts,
+        ];
+        const items = emittedDishes.map((d) => {
+          const r = evaluateDish(d, allergens, merged);
+          return {
+            name: d.name,
+            risk: r.risk,
+            firedRules: r.fired.map((f) => ({
+              ruleId: f.ruleId,
+              description: f.description,
+              severity: f.severity,
+              allergen: f.allergen,
+              explanation: f.explanation,
+              fact: {
+                factType: f.fact.factType,
+                confidence: f.fact.confidence,
+                source: f.fact.source,
+                sourceSnippet: f.fact.sourceSnippet ?? null,
+                scopeKind: f.fact.scopeKind,
+                scopeValue: f.fact.scopeValue,
+              },
+            })),
+            unknownAllergens: r.unknownAllergens,
+          };
+        });
+        send("cross-contamination", { items, cuisine });
+      }
+    } catch (ccErr) {
+      console.warn("[menu/analyze] cross-contam scoring failed:", ccErr);
+    }
+
     send("done", { total: nextId, completed: nextId, failed: 0 });
     finish();
   } catch (err) {

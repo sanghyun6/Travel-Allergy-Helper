@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo } from "react";
+import { useState, useRef, useCallback, useMemo, useEffect } from "react";
 import { useProfile, useCart, type MenuItem } from "@/context/store-context";
 import { useAnalyzeMenuStream, type AnalyzedMenuItem } from "@/hooks/use-analyze-menu-stream";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { CitationChainList } from "@/components/citation-chain";
 import { RiskScoreBadge, OutcomeButtons, useRiskScore } from "@/components/risk-score";
+import { CrossContamBadge, ReviewNoteInput } from "@/components/cross-contamination";
+import { scoreCrossContamination, type CrossContamItem } from "@/lib/cross-contam-api";
 
 const MENU_LANGUAGES = [
   "Auto-detect",
@@ -110,6 +112,12 @@ export default function CameraPage() {
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [selectedItem, setSelectedItem] = useState<AnyItem | null>(null);
   const lastRequestRef = useRef<{ dataUrl: string } | null>(null);
+  // User-driven overrides from the review-note re-score. Stream-emitted
+  // cross-contam from the menu/analyze SSE event is the baseline; the
+  // re-score adds extracted facts on top and overlays per-dish.
+  // (`crossContam` itself is computed below, after `analyze.state` is destructured.)
+  const [crossContamOverride, setCrossContamOverride] = useState<Map<string, CrossContamItem>>(new Map());
+  const [reviewBusy, setReviewBusy] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -161,6 +169,9 @@ export default function CameraPage() {
   const runAnalysis = useCallback(async (dataUrl: string) => {
     setImagePreview(dataUrl);
     setSelectedItem(null);
+    // Each new scan starts with a fresh override map; the stream's baseline
+    // cross-contam events repopulate it from scratch.
+    setCrossContamOverride(new Map());
     lastRequestRef.current = { dataUrl };
 
     // Downscale large photos before upload — full-res phone photos can be
@@ -208,6 +219,9 @@ export default function CameraPage() {
     setImagePreview(null);
     setSelectedItem(null);
     analyze.reset();
+    // Clear per-scan review-note overrides so cross-contam results from
+    // a previous menu can never bleed into the next scan.
+    setCrossContamOverride(new Map());
     lastRequestRef.current = null;
     stopStream();
     setCameraMode("idle");
@@ -232,7 +246,15 @@ export default function CameraPage() {
   const {
     layout, items: itemsMap, itemErrors, status,
     completed, failed, total, error, detectedLanguage,
+    crossContam: streamCrossContam,
   } = analyze.state;
+
+  const crossContam = useMemo(() => {
+    const merged = new Map<string, CrossContamItem>();
+    for (const [k, v] of streamCrossContam) merged.set(k, v);
+    for (const [k, v] of crossContamOverride) merged.set(k, v);
+    return merged;
+  }, [streamCrossContam, crossContamOverride]);
 
   // Merge layout placeholders with analyzed item data so the UI shows shimmering
   // pins immediately and fills them in as item events arrive. The single-pass
@@ -268,6 +290,54 @@ export default function CameraPage() {
   const handleAdd = (item: AnyItem) => {
     addToCart(item as MenuItem, detectedLanguage);
     toast({ title: "Added to order", description: `${item.translatedName} added.` });
+  };
+
+  const allergensList = profile?.restrictions ?? [];
+  const completedItems = useMemo(
+    () =>
+      mergedItems
+        .map((m) => m.analyzed)
+        .filter((a): a is AnyItem => !!a),
+    [mergedItems],
+  );
+  const completedKey = completedItems.map((d) => d.name).join("|");
+
+  const runCrossContam = useCallback(
+    async (reviewText?: string | null) => {
+      if (completedItems.length === 0 || allergensList.length === 0) return;
+      const resp = await scoreCrossContamination({
+        dishes: completedItems.map((d) => ({
+          name: d.name,
+          translatedName: d.translatedName,
+          description: d.description,
+        })),
+        allergens: allergensList,
+        cuisine: detectedLanguage || (menuLanguage === "Auto-detect" ? null : menuLanguage),
+        reviewText: reviewText ?? null,
+      });
+      if (!resp) return;
+      setCrossContamOverride((prev) => {
+        const next = new Map(prev);
+        for (const it of resp.items) next.set(it.name, it);
+        return next;
+      });
+    },
+    [completedItems, allergensList, detectedLanguage, menuLanguage],
+  );
+
+  // Note: baseline cross-contamination scoring now ships inline on the
+  // /menu/analyze SSE stream (see use-analyze-menu-stream.ts). We only call
+  // /cross-contamination/score when the user adds a review note, which
+  // extracts facts via Gemini and re-scores with them.
+
+  const handleReview = async (text: string) => {
+    setReviewBusy(true);
+    try {
+      await runCrossContam(text);
+      toast({ title: "Re-scored with your note", description: "Cross-contact risks updated." });
+    } finally {
+      setReviewBusy(false);
+    }
   };
 
   const isWorking = status === "starting" || status === "layout" || status === "analyzing";
@@ -428,6 +498,22 @@ export default function CameraPage() {
                       <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
                     )}
                     <span className="truncate">{label}</span>
+                    {analyzed && (() => {
+                      const cc = crossContam.get(analyzed.name);
+                      if (!cc) return null;
+                      const dot =
+                        cc.risk === "high" ? "bg-red-500"
+                        : cc.risk === "medium" ? "bg-amber-500"
+                        : cc.risk === "low" ? "bg-green-500"
+                        : "bg-gray-400";
+                      return (
+                        <span
+                          className={`ml-1 inline-block w-1.5 h-1.5 rounded-full ${dot}`}
+                          title={`Cross-contamination risk: ${cc.risk}`}
+                          aria-label={`Cross-contamination risk: ${cc.risk}`}
+                        />
+                      );
+                    })()}
                   </button>
                 );
               })}
@@ -501,31 +587,38 @@ export default function CameraPage() {
                       </div>
                     );
                   }
+                  const cc = crossContam.get(analyzed.name) ?? null;
                   return (
-                    <button
-                      key={entry.id}
-                      onClick={() => setSelectedItem(analyzed)}
-                      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${
-                        analyzed.safetyLevel === "danger"
-                          ? "border-red-500/40 bg-red-500/5"
-                          : analyzed.safetyLevel === "warning"
-                          ? "border-amber-500/40 bg-amber-500/5"
-                          : "border-border bg-card"
-                      }`}
-                      data-testid={`list-menu-item-${idx}`}
-                    >
-                      <SafetyIcon level={analyzed.safetyLevel} className={`w-4 h-4 shrink-0 ${
-                        analyzed.safetyLevel === "danger" ? "text-red-500" :
-                        analyzed.safetyLevel === "warning" ? "text-amber-500" : "text-green-600"
-                      }`} />
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm truncate">{analyzed.translatedName}</p>
-                        <p className="text-xs text-muted-foreground truncate">{analyzed.name}</p>
-                      </div>
-                    </button>
+                    <div key={entry.id} className="space-y-1.5">
+                      <button
+                        onClick={() => setSelectedItem(analyzed)}
+                        className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${
+                          analyzed.safetyLevel === "danger"
+                            ? "border-red-500/40 bg-red-500/5"
+                            : analyzed.safetyLevel === "warning"
+                            ? "border-amber-500/40 bg-amber-500/5"
+                            : "border-border bg-card"
+                        }`}
+                        data-testid={`list-menu-item-${idx}`}
+                      >
+                        <SafetyIcon level={analyzed.safetyLevel} className={`w-4 h-4 shrink-0 ${
+                          analyzed.safetyLevel === "danger" ? "text-red-500" :
+                          analyzed.safetyLevel === "warning" ? "text-amber-500" : "text-green-600"
+                        }`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">{analyzed.translatedName}</p>
+                          <p className="text-xs text-muted-foreground truncate">{analyzed.name}</p>
+                        </div>
+                      </button>
+                      {cc && <CrossContamBadge result={cc} compact />}
+                    </div>
                   );
                 })}
               </div>
+            )}
+
+            {status === "done" && allergensList.length > 0 && completedItems.length > 0 && (
+              <ReviewNoteInput onSubmit={handleReview} busy={reviewBusy} />
             )}
           </div>
         )}
@@ -574,6 +667,8 @@ export default function CameraPage() {
               <p className="text-sm text-foreground/80 leading-relaxed">{selectedItem.description}</p>
 
               <RiskScoreInline item={selectedItem} cuisine={detectedLanguage} />
+
+              <CrossContamBadge result={crossContam.get(selectedItem.name) ?? null} />
 
               {selectedItem.citations && selectedItem.citations.length > 0 && (
                 <CitationChainList chains={selectedItem.citations} />

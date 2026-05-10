@@ -6,6 +6,7 @@ import chatRouter from "./chat";
 import geminiRouter from "./gemini";
 import historyRouter from "./history";
 import riskRouter from "./risk";
+import crossContaminationRouter from "./cross-contamination";
 
 const router: IRouter = Router();
 
@@ -16,5 +17,6 @@ router.use(chatRouter);
 router.use(geminiRouter);
 router.use(historyRouter);
 router.use(riskRouter);
+router.use(crossContaminationRouter);
 
 export default router;

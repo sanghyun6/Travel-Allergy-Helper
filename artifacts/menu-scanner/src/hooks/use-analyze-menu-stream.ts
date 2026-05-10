@@ -19,6 +19,11 @@ export type AnalyzeMenuRequest = {
 
 export type ItemError = { name: string; message: string };
 
+// Re-export the unified type from the api wrapper so producers and consumers
+// (the camera page, components, the score endpoint) all share one shape.
+import type { CrossContamItem } from "@/lib/cross-contam-api";
+export type StreamCrossContamItem = CrossContamItem;
+
 export type AnalyzeMenuStreamState = {
   status: "idle" | "starting" | "layout" | "analyzing" | "done" | "error";
   layout: LayoutPlaceholder[];
@@ -29,6 +34,8 @@ export type AnalyzeMenuStreamState = {
   failed: number;
   total: number;
   error: string | null;
+  crossContam: Map<string, CrossContamItem>;
+  crossContamCuisine: string | null;
 };
 
 const initialState: AnalyzeMenuStreamState = {
@@ -41,6 +48,8 @@ const initialState: AnalyzeMenuStreamState = {
   failed: 0,
   total: 0,
   error: null,
+  crossContam: new Map(),
+  crossContamCuisine: null,
 };
 
 /**
@@ -275,6 +284,23 @@ export function useAnalyzeMenuStream() {
               failed: typeof p.failed === "number" ? p.failed : s.failed,
               total: typeof p.total === "number" ? p.total : s.total,
             }));
+            break;
+          }
+          case "cross-contamination": {
+            const p = payload as {
+              items?: StreamCrossContamItem[];
+              cuisine?: string | null;
+            };
+            const items = Array.isArray(p.items) ? p.items : [];
+            setState((s) => {
+              const next = new Map(s.crossContam);
+              for (const it of items) next.set(it.name, it);
+              return {
+                ...s,
+                crossContam: next,
+                crossContamCuisine: p.cuisine ?? s.crossContamCuisine,
+              };
+            });
             break;
           }
           case "done": {

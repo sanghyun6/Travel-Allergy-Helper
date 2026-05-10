@@ -4,6 +4,10 @@ import {
   AnalyzeMenuBody,
   GetOrderingInstructionsBody,
 } from "@workspace/api-zod";
+import {
+  buildCitationChains,
+  type CitationChain,
+} from "../lib/ingredient-graph";
 
 const router = Router();
 
@@ -27,7 +31,38 @@ type AnalyzedItem = {
   allergenFlags: AllergenFlag[];
   boundingBox?: BBox;
   nameBox?: BBox;
+  citations?: CitationChain[];
 };
+
+// Map of common restriction phrases to allergen slugs in the knowledge graph.
+function restrictionsToAllergenSlugs(restrictions: string[]): string[] {
+  const out = new Set<string>();
+  for (const r of restrictions) {
+    const s = r.toLowerCase();
+    if (/peanut/.test(s)) out.add("peanut");
+    if (/(tree.?nut|almond|cashew|hazelnut|walnut|pecan|pistachio|nut allerg)/.test(s)) out.add("tree-nut");
+    if (/(milk|dairy|lactose|cheese)/.test(s)) out.add("milk");
+    if (/egg/.test(s)) out.add("egg");
+    if (/(wheat|gluten)/.test(s)) out.add("wheat");
+    if (/soy/.test(s)) out.add("soy");
+    if (/(fish|pescatarian)/.test(s) && !/shellfish/.test(s)) out.add("fish");
+    if (/(shellfish|shrimp|prawn|crab|lobster|oyster|clam|mussel|scallop|squid|calamari)/.test(s)) out.add("shellfish");
+    if (/sesame/.test(s)) out.add("sesame");
+    if (/mustard/.test(s)) out.add("mustard");
+    if (/sulphite|sulfite/.test(s)) out.add("sulphite");
+    if (/celery/.test(s)) out.add("celery");
+  }
+  // If nothing matched, also flag major allergens by default so we still
+  // annotate dishes with helpful citation chains even when the user has no
+  // listed restriction (matches the existing "always flag common allergens"
+  // behavior of the per-item prompt).
+  if (out.size === 0) {
+    ["peanut", "tree-nut", "milk", "egg", "wheat", "soy", "fish", "shellfish"].forEach(
+      (s) => out.add(s),
+    );
+  }
+  return [...out];
+}
 
 router.post("/menu/analyze", async (req, res) => {
   const parsed = AnalyzeMenuBody.safeParse(req.body);
@@ -170,8 +205,14 @@ Based on common knowledge of this dish (no image is provided — work from the n
   "description": "brief 1-sentence description of what the dish typically is",
   "safetyLevel": "safe" | "warning" | "danger",
   "conflictingRestrictions": ["restriction1"],
-  "allergenFlags": [ { "name": "Peanuts", "severity": "high" | "medium" | "low" } ]
+  "allergenFlags": [ { "name": "Peanuts", "severity": "high" | "medium" | "low" } ],
+  "extractedIngredients": ["ingredient or sauce names you see / infer, in original language preferred"]
 }
+
+For "extractedIngredients", list the SPECIFIC ingredients, sauces, broths, condiments, or
+named components that go into this dish — both ones written on the menu and well-known
+defaults (e.g. for "Pad See Ew" include "soy sauce" and "oyster sauce" even if not printed).
+Keep names short (one phrase each), use the menu's language where possible.
 
 Safety levels:
 - "danger": directly conflicts with the user's restrictions OR almost certainly contains a major allergen (peanuts, tree nuts, shellfish, eggs, dairy, gluten, soy)
@@ -200,11 +241,33 @@ Return ONLY valid JSON, no markdown.`;
 
         if (clientGone) return;
 
-        let analysis: Partial<AnalyzedItem> = {};
+        let analysis: Partial<AnalyzedItem> & { extractedIngredients?: string[] } = {};
         try {
           analysis = JSON.parse(response.text ?? "{}");
         } catch {
           analysis = {};
+        }
+
+        // Resolve ingredients through the knowledge graph and build citation
+        // chains for whichever ingredients trace to one of the user's
+        // (or default) allergens. The dish's own name is also resolved so
+        // dishes like "Pad See Ew" trigger via the graph even if the LLM
+        // forgets a sauce.
+        let citations: CitationChain[] = [];
+        try {
+          const ingredientTexts = [
+            item.name,
+            ...(Array.isArray(analysis.extractedIngredients)
+              ? analysis.extractedIngredients.filter(
+                  (s): s is string => typeof s === "string",
+                )
+              : []),
+          ];
+          const allergenSlugs = restrictionsToAllergenSlugs(restrictions);
+          citations = await buildCitationChains(ingredientTexts, allergenSlugs);
+        } catch (graphErr) {
+          // Graph is best-effort — never break the main analysis on a graph error.
+          console.error(`Citation graph failed for item ${item.id}:`, graphErr);
         }
 
         const analyzed: AnalyzedItem = {
@@ -234,6 +297,7 @@ Return ONLY valid JSON, no markdown.`;
             : [],
           boundingBox: item.boundingBox,
           nameBox: item.nameBox,
+          citations,
         };
 
         completed++;
@@ -297,6 +361,93 @@ Return ONLY valid JSON, no markdown.`;
       });
     }
     finish();
+  }
+});
+
+router.get("/menu/ingredient-graph/search", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  const lang = typeof req.query.lang === "string" ? req.query.lang : "auto";
+  const k = Math.min(20, Math.max(1, Number(req.query.k ?? 5) || 5));
+  const allergensParam = typeof req.query.allergens === "string" ? req.query.allergens : "";
+  if (!q) {
+    res.status(400).json({ error: "q query param is required" });
+    return;
+  }
+  try {
+    const { resolveIngredient, buildCitationChains } = await import(
+      "../lib/ingredient-graph"
+    );
+    const matches = await resolveIngredient(q, k);
+    const allergenSlugs = allergensParam
+      ? allergensParam.split(",").map((s) => s.trim()).filter(Boolean)
+      : [
+          "peanut","tree-nut","milk","egg","wheat","soy","fish","shellfish",
+          "sesame","mustard","sulphite","celery",
+        ];
+    const chains = await buildCitationChains([q], allergenSlugs);
+    res.json({
+      query: q,
+      language: lang,
+      matches: matches.map((m) => ({
+        ingredient: m.ingredient,
+        distance: m.distance,
+      })),
+      citations: chains,
+    });
+  } catch (err) {
+    console.error("Graph search failed:", err);
+    res.status(500).json({ error: "Search failed" });
+  }
+});
+
+router.get("/menu/ingredient-graph/lookup", async (req, res) => {
+  const slug = typeof req.query.slug === "string" ? req.query.slug : "";
+  if (!slug) {
+    res.status(400).json({ error: "slug query param is required" });
+    return;
+  }
+  try {
+    const { db, ingredients, ingredientAliases, ingredientAllergens, allergens } =
+      await import("@workspace/db");
+    const { eq } = await import("drizzle-orm");
+    const [ing] = await db
+      .select()
+      .from(ingredients)
+      .where(eq(ingredients.slug, slug))
+      .limit(1);
+    if (!ing) {
+      res.status(404).json({ error: "Ingredient not found" });
+      return;
+    }
+    const aliases = await db
+      .select({ alias: ingredientAliases.alias, language: ingredientAliases.language })
+      .from(ingredientAliases)
+      .where(eq(ingredientAliases.ingredientId, ing.id));
+    const tagged = await db
+      .select({
+        slug: allergens.slug,
+        name: allergens.name,
+        category: allergens.category,
+      })
+      .from(ingredientAllergens)
+      .innerJoin(allergens, eq(ingredientAllergens.allergenId, allergens.id))
+      .where(eq(ingredientAllergens.ingredientId, ing.id));
+    res.json({
+      ingredient: {
+        id: ing.id,
+        slug: ing.slug,
+        name: ing.canonicalName,
+        category: ing.category,
+        description: ing.description,
+        source: ing.source,
+        sourceUrl: ing.sourceUrl,
+        aliases,
+      },
+      allergens: tagged,
+    });
+  } catch (err) {
+    console.error("Graph lookup failed:", err);
+    res.status(500).json({ error: "Lookup failed" });
   }
 });
 

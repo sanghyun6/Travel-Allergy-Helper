@@ -1,0 +1,679 @@
+# Curated allergen / ingredient knowledge graph.
+# Loaded by `scripts/seed-knowledge-graph.ts`. Idempotent — safe to re-run.
+#
+# Structure:
+#   allergens:   canonical allergen tags (slug, name, category)
+#   ingredients: canonical ingredient nodes; each can have aliases (multilingual)
+#                and direct allergen tags. Derivations are listed at the bottom
+#                so we can describe parent→child relations between ingredients
+#                (e.g. "fish-sauce derived_from anchovy", "anchovy is_a fish").
+
+allergens:
+  - { slug: peanut,    name: Peanuts,        category: legume }
+  - { slug: tree-nut,  name: Tree nuts,      category: nut }
+  - { slug: milk,      name: Milk / dairy,   category: dairy }
+  - { slug: egg,       name: Eggs,           category: egg }
+  - { slug: wheat,     name: Wheat / gluten, category: grain }
+  - { slug: soy,       name: Soy,            category: legume }
+  - { slug: fish,      name: Fish,           category: fish }
+  - { slug: shellfish, name: Shellfish,      category: shellfish }
+  - { slug: sesame,    name: Sesame,         category: seed }
+  - { slug: mustard,   name: Mustard,        category: seed }
+  - { slug: sulphite,  name: Sulphites,      category: additive }
+  - { slug: celery,    name: Celery,         category: vegetable }
+
+ingredients:
+  # ── Sauces & condiments (high-risk hidden allergens) ──
+  - slug: fish-sauce
+    name: Fish sauce
+    category: condiment
+    description: Fermented fish liquid used widely in SE Asian cooking. Almost always derived from anchovies.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Fish_sauce
+    aliases:
+      - { alias: fish sauce,    language: en }
+      - { alias: nam pla,       language: th }
+      - { alias: น้ำปลา,         language: th }
+      - { alias: nuoc mam,      language: vi }
+      - { alias: nước mắm,      language: vi }
+      - { alias: patis,         language: tl }
+      - { alias: 魚露,           language: zh }
+      - { alias: yu lu,         language: zh }
+      - { alias: ngapi yay,     language: my }
+    allergens: [fish]
+
+  - slug: oyster-sauce
+    name: Oyster sauce
+    category: condiment
+    description: Thick brown sauce made from oyster extracts; common in Cantonese and Thai cooking.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Oyster_sauce
+    aliases:
+      - { alias: oyster sauce,  language: en }
+      - { alias: 蚝油,           language: zh }
+      - { alias: hao you,       language: zh }
+      - { alias: 蠔油,           language: zh }
+      - { alias: dầu hào,       language: vi }
+      - { alias: น้ำมันหอย,     language: th }
+      - { alias: nam man hoi,   language: th }
+    allergens: [shellfish]
+
+  - slug: shrimp-paste
+    name: Shrimp paste
+    category: condiment
+    description: Fermented ground shrimp used in SE Asian cuisines.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Shrimp_paste
+    aliases:
+      - { alias: shrimp paste,  language: en }
+      - { alias: kapi,          language: th }
+      - { alias: กะปิ,           language: th }
+      - { alias: belacan,       language: ms }
+      - { alias: terasi,        language: id }
+      - { alias: bagoong,       language: tl }
+      - { alias: mam tom,       language: vi }
+      - { alias: 蝦醬,           language: zh }
+    allergens: [shellfish]
+
+  - slug: worcestershire-sauce
+    name: Worcestershire sauce
+    category: condiment
+    description: Fermented condiment containing anchovies; common in Western cooking, Caesar dressing, marinades.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Worcestershire_sauce
+    aliases:
+      - { alias: worcestershire sauce, language: en }
+      - { alias: worcester sauce,      language: en }
+      - { alias: salsa inglesa,        language: es }
+      - { alias: ウスターソース,         language: ja }
+    allergens: [fish]
+
+  - slug: soy-sauce
+    name: Soy sauce
+    category: condiment
+    description: Fermented soybean liquid; most varieties also contain wheat.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Soy_sauce
+    aliases:
+      - { alias: soy sauce,      language: en }
+      - { alias: shoyu,          language: ja }
+      - { alias: 醤油,           language: ja }
+      - { alias: 醬油,           language: zh }
+      - { alias: jiang you,      language: zh }
+      - { alias: 간장,           language: ko }
+      - { alias: ganjang,        language: ko }
+      - { alias: nước tương,     language: vi }
+      - { alias: ซีอิ๊ว,           language: th }
+      - { alias: see ew,         language: th }
+      - { alias: kecap asin,     language: id }
+    allergens: [soy, wheat]
+
+  - slug: tamari
+    name: Tamari
+    category: condiment
+    description: Japanese soy sauce variant traditionally made with little or no wheat.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Tamari
+    aliases:
+      - { alias: tamari,         language: en }
+      - { alias: たまり,           language: ja }
+      - { alias: 溜まり醤油,      language: ja }
+    allergens: [soy]
+
+  - slug: miso
+    name: Miso
+    category: condiment
+    description: Japanese fermented soybean paste; many varieties are blended with barley or rice koji.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Miso
+    aliases:
+      - { alias: miso,           language: en }
+      - { alias: 味噌,           language: ja }
+      - { alias: doenjang,       language: ko }
+      - { alias: 된장,           language: ko }
+    allergens: [soy]
+
+  - slug: hoisin-sauce
+    name: Hoisin sauce
+    category: condiment
+    description: Sweet Cantonese sauce based on fermented soybeans; often contains wheat.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Hoisin_sauce
+    aliases:
+      - { alias: hoisin,          language: en }
+      - { alias: hoisin sauce,    language: en }
+      - { alias: 海鮮醬,          language: zh }
+      - { alias: hai xian jiang,  language: zh }
+    allergens: [soy, wheat]
+
+  - slug: tahini
+    name: Tahini
+    category: condiment
+    description: Ground sesame seed paste used widely in Middle Eastern cuisine.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Tahini
+    aliases:
+      - { alias: tahini,         language: en }
+      - { alias: tahina,         language: en }
+      - { alias: طحينة,           language: ar }
+      - { alias: tahin,          language: tr }
+    allergens: [sesame]
+
+  - slug: gochujang
+    name: Gochujang
+    category: condiment
+    description: Korean fermented chili paste; typically contains soybean (meju) and glutinous rice.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Gochujang
+    aliases:
+      - { alias: gochujang,      language: en }
+      - { alias: 고추장,          language: ko }
+    allergens: [soy]
+
+  - slug: ssamjang
+    name: Ssamjang
+    category: condiment
+    description: Korean dipping paste blending doenjang (soybean) and gochujang.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Ssamjang
+    aliases:
+      - { alias: ssamjang,       language: en }
+      - { alias: 쌈장,           language: ko }
+    allergens: [soy]
+
+  - slug: ponzu
+    name: Ponzu
+    category: condiment
+    description: Japanese citrus sauce typically mixed with soy sauce and bonito (fish) flakes.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Ponzu
+    aliases:
+      - { alias: ponzu,          language: en }
+      - { alias: ポン酢,          language: ja }
+    allergens: [soy, fish, wheat]
+
+  - slug: xo-sauce
+    name: XO sauce
+    category: condiment
+    description: Spicy Hong Kong sauce containing dried scallops and shrimp.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/XO_sauce
+    aliases:
+      - { alias: XO sauce,       language: en }
+      - { alias: XO醬,           language: zh }
+    allergens: [shellfish, fish]
+
+  # ── Stocks & broths ──
+  - slug: dashi
+    name: Dashi
+    category: stock
+    description: Japanese stock made from kombu and bonito flakes (katsuobushi).
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Dashi
+    aliases:
+      - { alias: dashi,          language: en }
+      - { alias: 出汁,           language: ja }
+      - { alias: だし,           language: ja }
+    allergens: [fish]
+
+  - slug: katsuobushi
+    name: Katsuobushi (bonito flakes)
+    category: ingredient
+    description: Dried, fermented, and smoked skipjack tuna; a fish product.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Katsuobushi
+    aliases:
+      - { alias: bonito flakes,  language: en }
+      - { alias: katsuobushi,    language: en }
+      - { alias: 鰹節,           language: ja }
+    allergens: [fish]
+
+  # ── Specific fish & shellfish ──
+  - slug: anchovy
+    name: Anchovy
+    category: fish
+    description: Small saltwater fish; a common hidden ingredient in sauces.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Anchovy
+    aliases:
+      - { alias: anchovy,        language: en }
+      - { alias: anchovies,      language: en }
+      - { alias: アンチョビ,      language: ja }
+      - { alias: ปลากะตัก,        language: th }
+      - { alias: 凤尾鱼,         language: zh }
+    allergens: [fish]
+
+  - slug: shrimp
+    name: Shrimp / prawn
+    category: shellfish
+    description: Decapod crustacean; common shellfish allergen source.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Shrimp
+    aliases:
+      - { alias: shrimp,         language: en }
+      - { alias: prawn,          language: en }
+      - { alias: 海老,           language: ja }
+      - { alias: ebi,            language: ja }
+      - { alias: 虾,             language: zh }
+      - { alias: tom,            language: vi }
+      - { alias: tôm,            language: vi }
+      - { alias: gambas,         language: es }
+      - { alias: gamberi,        language: it }
+    allergens: [shellfish]
+
+  - slug: oyster
+    name: Oyster
+    category: shellfish
+    description: Bivalve mollusk; classified as shellfish for allergen labeling.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Oyster
+    aliases:
+      - { alias: oyster,         language: en }
+      - { alias: 牡蠣,           language: ja }
+      - { alias: 蠔,             language: zh }
+      - { alias: huître,         language: fr }
+    allergens: [shellfish]
+
+  - slug: crab
+    name: Crab
+    category: shellfish
+    description: Decapod crustacean; shellfish allergen.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Crab
+    aliases:
+      - { alias: crab,           language: en }
+      - { alias: kani,           language: ja }
+      - { alias: 蟹,             language: ja }
+      - { alias: cua,            language: vi }
+      - { alias: ปู,              language: th }
+    allergens: [shellfish]
+
+  - slug: squid
+    name: Squid
+    category: shellfish
+    description: Cephalopod mollusk; commonly classified under shellfish for allergen warnings.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Squid_as_food
+    aliases:
+      - { alias: squid,          language: en }
+      - { alias: calamari,       language: en }
+      - { alias: ika,            language: ja }
+      - { alias: 烏賊,           language: ja }
+      - { alias: mực,             language: vi }
+    allergens: [shellfish]
+
+  # ── Soy products ──
+  - slug: tofu
+    name: Tofu
+    category: ingredient
+    description: Bean curd made from coagulated soy milk.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Tofu
+    aliases:
+      - { alias: tofu,           language: en }
+      - { alias: 豆腐,           language: zh }
+      - { alias: dou fu,         language: zh }
+      - { alias: đậu hũ,         language: vi }
+      - { alias: เต้าหู้,           language: th }
+    allergens: [soy]
+
+  - slug: edamame
+    name: Edamame
+    category: ingredient
+    description: Immature soybeans served in the pod.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Edamame
+    aliases:
+      - { alias: edamame,        language: en }
+      - { alias: 枝豆,           language: ja }
+    allergens: [soy]
+
+  - slug: natto
+    name: Natto
+    category: ingredient
+    description: Fermented whole soybeans; traditional Japanese breakfast food.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Natt%C5%8D
+    aliases:
+      - { alias: natto,          language: en }
+      - { alias: 納豆,           language: ja }
+    allergens: [soy]
+
+  - slug: tempeh
+    name: Tempeh
+    category: ingredient
+    description: Indonesian cake of fermented whole soybeans.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Tempeh
+    aliases:
+      - { alias: tempeh,         language: en }
+      - { alias: tempe,          language: id }
+    allergens: [soy]
+
+  # ── Wheat-bearing items often missed ──
+  - slug: seitan
+    name: Seitan
+    category: ingredient
+    description: Wheat gluten protein used as meat alternative.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Wheat_gluten_(food)
+    aliases:
+      - { alias: seitan,         language: en }
+      - { alias: wheat gluten,   language: en }
+      - { alias: 麩,             language: ja }
+      - { alias: 麵筋,           language: zh }
+    allergens: [wheat]
+
+  - slug: udon
+    name: Udon noodles
+    category: ingredient
+    description: Thick wheat-flour Japanese noodle.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Udon
+    aliases:
+      - { alias: udon,           language: en }
+      - { alias: うどん,           language: ja }
+    allergens: [wheat]
+
+  - slug: ramen-noodles
+    name: Ramen noodles
+    category: ingredient
+    description: Japanese wheat-and-egg alkaline noodle (chukamen).
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Ramen
+    aliases:
+      - { alias: ramen,          language: en }
+      - { alias: ラーメン,         language: ja }
+      - { alias: 拉麵,           language: zh }
+    allergens: [wheat, egg]
+
+  - slug: panko
+    name: Panko
+    category: ingredient
+    description: Japanese-style breadcrumbs made from wheat bread.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Bread_crumbs#Panko
+    aliases:
+      - { alias: panko,          language: en }
+      - { alias: パン粉,           language: ja }
+    allergens: [wheat]
+
+  # ── Dairy ──
+  - slug: ghee
+    name: Ghee
+    category: ingredient
+    description: Clarified butter common in South Asian cooking; still a dairy product.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Ghee
+    aliases:
+      - { alias: ghee,           language: en }
+      - { alias: घी,              language: hi }
+      - { alias: 印度酥油,        language: zh }
+    allergens: [milk]
+
+  - slug: paneer
+    name: Paneer
+    category: ingredient
+    description: Indian fresh cheese.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Paneer
+    aliases:
+      - { alias: paneer,         language: en }
+      - { alias: पनीर,             language: hi }
+    allergens: [milk]
+
+  - slug: casein
+    name: Casein
+    category: ingredient
+    description: Primary protein in milk; appears as additive on labels.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Casein
+    aliases:
+      - { alias: casein,         language: en }
+      - { alias: caseinate,      language: en }
+      - { alias: caseín,         language: es }
+    allergens: [milk]
+
+  - slug: whey
+    name: Whey
+    category: ingredient
+    description: Liquid remaining after milk has been curdled and strained.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Whey
+    aliases:
+      - { alias: whey,           language: en }
+      - { alias: lactosérum,     language: fr }
+    allergens: [milk]
+
+  # ── Tree nuts / peanuts ──
+  - slug: marzipan
+    name: Marzipan
+    category: ingredient
+    description: Confection made primarily from almond paste and sugar.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Marzipan
+    aliases:
+      - { alias: marzipan,       language: en }
+      - { alias: marzapane,      language: it }
+      - { alias: mazapán,        language: es }
+    allergens: [tree-nut]
+
+  - slug: gianduja
+    name: Gianduja
+    category: ingredient
+    description: Sweet chocolate paste containing about 30% hazelnut.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Gianduja_(chocolate)
+    aliases:
+      - { alias: gianduja,       language: en }
+      - { alias: gianduia,       language: it }
+    allergens: [tree-nut, milk]
+
+  - slug: satay-sauce
+    name: Satay sauce
+    category: condiment
+    description: SE Asian peanut-based dipping sauce.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Satay
+    aliases:
+      - { alias: satay sauce,    language: en }
+      - { alias: peanut sauce,   language: en }
+      - { alias: น้ำจิ้มสะเต๊ะ,    language: th }
+      - { alias: bumbu kacang,   language: id }
+    allergens: [peanut]
+
+  - slug: mole-sauce
+    name: Mole
+    category: condiment
+    description: Mexican sauce often thickened with peanuts, almonds, or sesame seeds plus chocolate.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Mole_sauce
+    aliases:
+      - { alias: mole,           language: en }
+      - { alias: mole poblano,   language: es }
+    allergens: [peanut, tree-nut, sesame]
+
+  # ── Other regional risk items ──
+  - slug: pesto
+    name: Pesto
+    category: condiment
+    description: Italian sauce traditionally made with pine nuts, basil, garlic, parmesan and olive oil.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Pesto
+    aliases:
+      - { alias: pesto,          language: en }
+      - { alias: pesto alla genovese, language: it }
+    allergens: [tree-nut, milk]
+
+  - slug: caesar-dressing
+    name: Caesar dressing
+    category: condiment
+    description: Salad dressing typically containing anchovies, raw egg yolk, and parmesan.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Caesar_salad
+    aliases:
+      - { alias: caesar dressing, language: en }
+      - { alias: caesar salad dressing, language: en }
+    allergens: [fish, egg, milk]
+
+  - slug: aioli
+    name: Aioli
+    category: condiment
+    description: Mediterranean garlic sauce traditionally emulsified with egg yolk.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Aioli
+    aliases:
+      - { alias: aioli,          language: en }
+      - { alias: allioli,        language: ca }
+    allergens: [egg]
+
+  - slug: surimi
+    name: Surimi
+    category: ingredient
+    description: Processed fish paste used to imitate crab; nearly always contains pollock.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Surimi
+    aliases:
+      - { alias: surimi,         language: en }
+      - { alias: kanikama,       language: ja }
+      - { alias: imitation crab, language: en }
+    allergens: [fish, shellfish]
+
+  # ── Dishes — concrete menu items so the graph can flag them as a whole ──
+  - slug: dish-pad-see-ew
+    name: Pad See Ew
+    category: dish
+    description: Thai stir-fried wide rice noodle dish typically dressed with soy sauce, dark soy, and oyster sauce.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Pad_see_ew
+    aliases:
+      - { alias: pad see ew,     language: en }
+      - { alias: pad siew,       language: en }
+      - { alias: ผัดซีอิ๊ว,         language: th }
+
+  - slug: dish-pad-thai
+    name: Pad Thai
+    category: dish
+    description: Thai stir-fried rice noodle dish containing fish sauce, tamarind, peanuts, egg, and often shrimp.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Pad_thai
+    aliases:
+      - { alias: pad thai,       language: en }
+      - { alias: ผัดไทย,           language: th }
+
+  - slug: dish-tom-yum
+    name: Tom Yum
+    category: dish
+    description: Thai hot-and-sour soup, almost always seasoned with fish sauce and frequently containing shrimp.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Tom_yum
+    aliases:
+      - { alias: tom yum,        language: en }
+      - { alias: tom yam,        language: en }
+      - { alias: ต้มยำ,            language: th }
+
+  - slug: dish-okonomiyaki
+    name: Okonomiyaki
+    category: dish
+    description: Japanese savory pancake with wheat flour batter, egg, cabbage, often topped with bonito flakes and Worcestershire-style sauce.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Okonomiyaki
+    aliases:
+      - { alias: okonomiyaki,    language: en }
+      - { alias: お好み焼き,       language: ja }
+
+  - slug: dish-bun-bo-hue
+    name: Bún bò Huế
+    category: dish
+    description: Vietnamese spicy beef noodle soup with shrimp paste broth.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/B%C3%BAn_b%C3%B2_Hu%E1%BA%BF
+    aliases:
+      - { alias: bun bo hue,     language: en }
+      - { alias: bún bò huế,     language: vi }
+
+  - slug: dish-pho
+    name: Phở
+    category: dish
+    description: Vietnamese noodle soup; broth is typically finished with fish sauce.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Pho
+    aliases:
+      - { alias: pho,            language: en }
+      - { alias: phở,            language: vi }
+
+# Parent → child relations between ingredient/dish nodes.
+# `relation` values:
+#   contains:     parent (a dish or compound) contains child as ingredient
+#   derived_from: child is derived from parent (e.g. fish-sauce derived_from anchovy)
+#   is_a:         child is a kind of parent (e.g. anchovy is_a fish — though
+#                 we usually express that via direct allergen tags)
+derivations:
+  # Sauces → underlying allergen ingredients
+  - { parent: fish-sauce,           child: anchovy,    relation: derived_from, note: "Most commercial fish sauce is made by fermenting anchovies in salt." }
+  - { parent: oyster-sauce,         child: oyster,     relation: derived_from, note: "Sauce is reduced from oyster extracts." }
+  - { parent: shrimp-paste,         child: shrimp,     relation: derived_from, note: "Made by fermenting ground shrimp." }
+  - { parent: worcestershire-sauce, child: anchovy,    relation: contains,     note: "Anchovies are a defining ingredient of Worcestershire sauce." }
+  - { parent: dashi,                child: katsuobushi, relation: contains,    note: "Bonito flakes are simmered with kombu to make traditional dashi." }
+  - { parent: ponzu,                child: katsuobushi, relation: contains,    note: "Most ponzu blends in dashi or bonito for umami." }
+  - { parent: ponzu,                child: soy-sauce,  relation: contains,     note: "Ponzu shoyu is mixed with soy sauce." }
+  - { parent: xo-sauce,             child: shrimp,     relation: contains,     note: "Dried shrimp is a core ingredient." }
+  - { parent: xo-sauce,             child: anchovy,    relation: contains,     note: "Many recipes include dried fish such as anchovy." }
+  - { parent: caesar-dressing,      child: anchovy,    relation: contains,     note: "Classic Caesar dressing uses anchovies." }
+  - { parent: pesto,                child: marzipan,   relation: contains,     note: "Pesto traditionally contains pine nuts (a tree nut)." }
+  - { parent: hoisin-sauce,         child: soy-sauce,  relation: contains,     note: "Hoisin is built on a fermented soybean base." }
+  - { parent: gochujang,            child: soy-sauce,  relation: contains,     note: "Gochujang is fermented with meju (soybean)." }
+  - { parent: ssamjang,             child: gochujang,  relation: contains,     note: "Ssamjang blends gochujang and doenjang (soybean pastes)." }
+  - { parent: ssamjang,             child: miso,       relation: contains,     note: "Doenjang is a soybean paste closely related to miso." }
+  - { parent: surimi,               child: anchovy,    relation: derived_from, note: "Surimi is made from white fish such as pollock; treat as fish." }
+  - { parent: satay-sauce,          child: soy-sauce,  relation: contains,     note: "Many satay sauces include soy sauce alongside peanuts." }
+
+  # Dishes → component ingredients (for explainable flags)
+  - { parent: dish-pad-see-ew,    child: soy-sauce,    relation: contains, note: "Pad See Ew is named after the dark soy sauce that coats the noodles." }
+  - { parent: dish-pad-see-ew,    child: oyster-sauce, relation: contains, note: "Most recipes finish with oyster sauce for umami." }
+  - { parent: dish-pad-see-ew,    child: egg,          relation: contains, note: "Egg is scrambled into the noodles." }
+  - { parent: dish-pad-thai,      child: fish-sauce,   relation: contains, note: "Pad Thai sauce is built on fish sauce, tamarind, and palm sugar." }
+  - { parent: dish-pad-thai,      child: satay-sauce,  relation: contains, note: "Pad Thai is finished with crushed peanuts." }
+  - { parent: dish-pad-thai,      child: shrimp,       relation: contains, note: "Pad Thai is most commonly served with shrimp." }
+  - { parent: dish-pad-thai,      child: egg,          relation: contains, note: "Egg is scrambled into the dish." }
+  - { parent: dish-tom-yum,       child: fish-sauce,   relation: contains, note: "Tom Yum broth is seasoned with fish sauce." }
+  - { parent: dish-tom-yum,       child: shrimp,       relation: contains, note: "Tom Yum Goong is the shrimp version, but most Tom Yum uses shrimp stock." }
+  - { parent: dish-okonomiyaki,   child: katsuobushi,  relation: contains, note: "Topped with shaved bonito flakes." }
+  - { parent: dish-okonomiyaki,   child: worcestershire-sauce, relation: contains, note: "Drizzled with okonomi sauce, a Worcestershire-style sauce containing anchovy." }
+  - { parent: dish-okonomiyaki,   child: udon,         relation: contains, note: "Wheat flour batter is the base; some variants add wheat noodles." }
+  - { parent: dish-bun-bo-hue,    child: shrimp-paste, relation: contains, note: "The broth is built on mam ruoc (shrimp paste)." }
+  - { parent: dish-bun-bo-hue,    child: fish-sauce,   relation: contains, note: "Seasoned with fish sauce." }
+  - { parent: dish-pho,           child: fish-sauce,   relation: contains, note: "Pho broth is seasoned with fish sauce at the table or in the pot." }
+
+# Egg / wheat / etc don't need a derivation node — they are already direct
+# allergens. We also add canonical 'egg' and 'wheat' INGREDIENT nodes so the
+# dishes above can target them by slug.
+extra_ingredients:
+  - slug: egg
+    name: Egg
+    category: ingredient
+    description: Whole hen's egg.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Egg_as_food
+    aliases:
+      - { alias: egg,    language: en }
+      - { alias: eggs,   language: en }
+      - { alias: 卵,     language: ja }
+      - { alias: tamago, language: ja }
+      - { alias: 蛋,     language: zh }
+      - { alias: huevo,  language: es }
+      - { alias: oeuf,   language: fr }
+    allergens: [egg]
+
+  - slug: wheat-flour
+    name: Wheat flour
+    category: ingredient
+    description: Flour milled from wheat; contains gluten.
+    source: curated
+    source_url: https://en.wikipedia.org/wiki/Wheat_flour
+    aliases:
+      - { alias: wheat flour,    language: en }
+      - { alias: flour,          language: en }
+      - { alias: 小麦粉,          language: ja }
+      - { alias: 麵粉,            language: zh }
+    allergens: [wheat]

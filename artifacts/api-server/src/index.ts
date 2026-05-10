@@ -1,5 +1,6 @@
 import app from "./app";
 import { logger } from "./lib/logger";
+import { bootstrapKnowledgeGraph } from "./lib/ingredient-graph/seed";
 
 const rawPort = process.env["PORT"];
 
@@ -22,4 +23,11 @@ app.listen(port, (err) => {
   }
 
   logger.info({ port }, "Server listening");
+
+  // Run knowledge-graph bootstrap in the background. It's idempotent and
+  // only does work on a fresh database. We don't await it so the server
+  // starts serving immediately.
+  bootstrapKnowledgeGraph().catch((bootErr) => {
+    logger.error({ err: bootErr }, "Knowledge-graph bootstrap failed");
+  });
 });

@@ -108,9 +108,10 @@ export const GenerateGeminiImageResponse = zod.object({
  * Streams menu analysis as Server-Sent Events. Event types:
 - `layout`: initial detected items with bounding boxes (placeholders).
 - `item`: a single fully analyzed item (translation + safety verdict).
-- `progress`: { completed, total }.
-- `done`: stream finished successfully.
-- `error`: terminal error.
+- `item_error`: a single item failed to analyze; other items keep going.
+- `progress`: { completed, failed, total }.
+- `done`: stream finished (after all items have settled).
+- `error`: terminal stream-level error.
 
  * @summary Analyze a menu photo using Gemini vision (SSE stream)
  */
@@ -121,6 +122,155 @@ export const AnalyzeMenuBody = zod.object({
   mimeType: zod.string().default(analyzeMenuBodyMimeTypeDefault),
   menuLanguage: zod.string(),
   restrictions: zod.array(zod.string()),
+});
+
+/**
+ * Resolves a free-text ingredient string (any language) to the top-k closest
+canonical ingredient nodes via exact-alias + pgvector cosine search, and
+also returns the full citation chains reaching each requested allergen.
+
+ * @summary Free-text top-k ingredient search with optional citation chains
+ */
+export const searchIngredientGraphQueryLangDefault = `auto`;
+export const searchIngredientGraphQueryKDefault = 5;
+export const searchIngredientGraphQueryKMax = 20;
+
+export const SearchIngredientGraphQueryParams = zod.object({
+  q: zod.coerce
+    .string()
+    .describe("Free-text ingredient string in any language"),
+  lang: zod.coerce
+    .string()
+    .default(searchIngredientGraphQueryLangDefault)
+    .describe("ISO language hint for the input string (advisory)"),
+  k: zod.coerce
+    .number()
+    .min(1)
+    .max(searchIngredientGraphQueryKMax)
+    .default(searchIngredientGraphQueryKDefault)
+    .describe("Maximum number of candidate matches to return"),
+  allergens: zod.coerce
+    .string()
+    .optional()
+    .describe("Comma-separated allergen slugs to chase chains for"),
+});
+
+export const SearchIngredientGraphResponse = zod.object({
+  query: zod.string(),
+  language: zod.string(),
+  matches: zod.array(
+    zod.object({
+      ingredient: zod.object({
+        id: zod.number(),
+        slug: zod.string(),
+        name: zod.string(),
+        category: zod.string().nullish(),
+        description: zod.string().nullish(),
+        source: zod.string(),
+        sourceUrl: zod.string().nullish(),
+        aliases: zod.array(
+          zod.object({
+            alias: zod.string(),
+            language: zod.string(),
+          }),
+        ),
+      }),
+      distance: zod.number(),
+    }),
+  ),
+  citations: zod.array(
+    zod.object({
+      sourceText: zod.string(),
+      matched: zod.object({
+        id: zod.number(),
+        slug: zod.string(),
+        name: zod.string(),
+        category: zod.string().nullish(),
+        description: zod.string().nullish(),
+        source: zod.string(),
+        sourceUrl: zod.string().nullish(),
+        aliases: zod.array(
+          zod.object({
+            alias: zod.string(),
+            language: zod.string(),
+          }),
+        ),
+      }),
+      matchDistance: zod.number(),
+      allergen: zod.object({
+        slug: zod.string(),
+        name: zod.string(),
+        category: zod.string(),
+      }),
+      links: zod.array(
+        zod
+          .object({
+            kind: zod.enum(["ingredient", "relation", "allergen"]),
+            ingredient: zod
+              .object({
+                id: zod.number(),
+                slug: zod.string(),
+                name: zod.string(),
+                category: zod.string().nullish(),
+                description: zod.string().nullish(),
+                source: zod.string(),
+                sourceUrl: zod.string().nullish(),
+                aliases: zod.array(
+                  zod.object({
+                    alias: zod.string(),
+                    language: zod.string(),
+                  }),
+                ),
+              })
+              .optional(),
+            relation: zod.string().optional(),
+            note: zod.string().nullish(),
+            allergen: zod
+              .object({
+                slug: zod.string(),
+                name: zod.string(),
+                category: zod.string(),
+              })
+              .optional(),
+          })
+          .describe(
+            "One step in a citation chain. Exactly one of ingredient\/relation\/allergen is set.",
+          ),
+      ),
+    }),
+  ),
+});
+
+/**
+ * @summary Look up an ingredient knowledge-graph node by slug (used by citation UI)
+ */
+export const LookupIngredientGraphNodeQueryParams = zod.object({
+  slug: zod.coerce.string(),
+});
+
+export const LookupIngredientGraphNodeResponse = zod.object({
+  ingredient: zod.object({
+    id: zod.number(),
+    slug: zod.string(),
+    name: zod.string(),
+    category: zod.string().nullish(),
+    description: zod.string().nullish(),
+    source: zod.string(),
+    sourceUrl: zod.string().nullish(),
+    aliases: zod.array(
+      zod.object({
+        alias: zod.string(),
+        language: zod.string(),
+      }),
+    ),
+  }),
+  allergens: zod.array(
+    zod.object({
+      slug: zod.string(),
+      name: zod.string(),
+      category: zod.string(),
+    }),
+  ),
 });
 
 /**

@@ -73,6 +73,60 @@ export interface MenuAllergenFlag {
   severity: string;
 }
 
+export type GraphIngredientNodeAliasesItem = {
+  alias: string;
+  language: string;
+};
+
+export interface GraphIngredientNode {
+  id: number;
+  slug: string;
+  name: string;
+  /** @nullable */
+  category?: string | null;
+  /** @nullable */
+  description?: string | null;
+  source: string;
+  /** @nullable */
+  sourceUrl?: string | null;
+  aliases: GraphIngredientNodeAliasesItem[];
+}
+
+export interface GraphAllergenNode {
+  slug: string;
+  name: string;
+  category: string;
+}
+
+export type CitationLinkKind =
+  (typeof CitationLinkKind)[keyof typeof CitationLinkKind];
+
+export const CitationLinkKind = {
+  ingredient: "ingredient",
+  relation: "relation",
+  allergen: "allergen",
+} as const;
+
+/**
+ * One step in a citation chain. Exactly one of ingredient/relation/allergen is set.
+ */
+export interface CitationLink {
+  kind: CitationLinkKind;
+  ingredient?: GraphIngredientNode;
+  relation?: string;
+  /** @nullable */
+  note?: string | null;
+  allergen?: GraphAllergenNode;
+}
+
+export interface CitationChain {
+  sourceText: string;
+  matched: GraphIngredientNode;
+  matchDistance: number;
+  allergen: GraphAllergenNode;
+  links: CitationLink[];
+}
+
 export interface MenuItem {
   name: string;
   description: string;
@@ -82,6 +136,7 @@ export interface MenuItem {
   translatedName: string;
   boundingBox?: MenuItemBoundingBox;
   nameBox?: MenuItemBoundingBox;
+  citations?: CitationChain[];
 }
 
 export interface MenuAnalysisResult {
@@ -130,3 +185,45 @@ export interface ChatMessageResult {
   reply: string;
   threadId: string;
 }
+
+export type SearchIngredientGraphParams = {
+  /**
+   * Free-text ingredient string in any language
+   */
+  q: string;
+  /**
+   * ISO language hint for the input string (advisory)
+   */
+  lang?: string;
+  /**
+   * Maximum number of candidate matches to return
+   * @minimum 1
+   * @maximum 20
+   */
+  k?: number;
+  /**
+   * Comma-separated allergen slugs to chase chains for
+   */
+  allergens?: string;
+};
+
+export type SearchIngredientGraph200MatchesItem = {
+  ingredient: GraphIngredientNode;
+  distance: number;
+};
+
+export type SearchIngredientGraph200 = {
+  query: string;
+  language: string;
+  matches: SearchIngredientGraph200MatchesItem[];
+  citations: CitationChain[];
+};
+
+export type LookupIngredientGraphNodeParams = {
+  slug: string;
+};
+
+export type LookupIngredientGraphNode200 = {
+  ingredient: GraphIngredientNode;
+  allergens: GraphAllergenNode[];
+};

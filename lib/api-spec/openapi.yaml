@@ -195,6 +195,93 @@ paths:
           content:
             text/event-stream: {}
 
+  /menu/ingredient-graph/search:
+    get:
+      operationId: searchIngredientGraph
+      tags: [menu]
+      summary: Free-text top-k ingredient search with optional citation chains
+      description: |
+        Resolves a free-text ingredient string (any language) to the top-k closest
+        canonical ingredient nodes via exact-alias + pgvector cosine search, and
+        also returns the full citation chains reaching each requested allergen.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string }
+          description: Free-text ingredient string in any language
+        - name: lang
+          in: query
+          required: false
+          schema: { type: string, default: auto }
+          description: ISO language hint for the input string (advisory)
+        - name: k
+          in: query
+          required: false
+          schema: { type: integer, default: 5, minimum: 1, maximum: 20 }
+          description: Maximum number of candidate matches to return
+        - name: allergens
+          in: query
+          required: false
+          schema: { type: string }
+          description: Comma-separated allergen slugs to chase chains for
+      responses:
+        "200":
+          description: Top-k matches and citation chains
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [query, language, matches, citations]
+                properties:
+                  query:    { type: string }
+                  language: { type: string }
+                  matches:
+                    type: array
+                    items:
+                      type: object
+                      required: [ingredient, distance]
+                      properties:
+                        ingredient: { $ref: "#/components/schemas/GraphIngredientNode" }
+                        distance:   { type: number }
+                  citations:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/CitationChain"
+
+  /menu/ingredient-graph/lookup:
+    get:
+      operationId: lookupIngredientGraphNode
+      tags: [menu]
+      summary: Look up an ingredient knowledge-graph node by slug (used by citation UI)
+      parameters:
+        - name: slug
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Ingredient node with aliases and direct allergen tags
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ingredient:
+                    $ref: "#/components/schemas/GraphIngredientNode"
+                  allergens:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/GraphAllergenNode"
+                required: [ingredient, allergens]
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiError"
+
   /menu/ordering-instructions:
     post:
       operationId: getOrderingInstructions
@@ -433,6 +520,10 @@ components:
           $ref: "#/components/schemas/MenuItemBoundingBox"
         nameBox:
           $ref: "#/components/schemas/MenuItemBoundingBox"
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/CitationChain"
       required:
         - name
         - description
@@ -440,6 +531,94 @@ components:
         - conflictingRestrictions
         - allergenFlags
         - translatedName
+
+    GraphIngredientNode:
+      type: object
+      properties:
+        id:
+          type: integer
+        slug:
+          type: string
+        name:
+          type: string
+        category:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        source:
+          type: string
+        sourceUrl:
+          type: ["string", "null"]
+        aliases:
+          type: array
+          items:
+            type: object
+            properties:
+              alias:
+                type: string
+              language:
+                type: string
+            required: [alias, language]
+      required:
+        - id
+        - slug
+        - name
+        - source
+        - aliases
+
+    GraphAllergenNode:
+      type: object
+      properties:
+        slug:
+          type: string
+        name:
+          type: string
+        category:
+          type: string
+      required:
+        - slug
+        - name
+        - category
+
+    CitationLink:
+      type: object
+      description: One step in a citation chain. Exactly one of ingredient/relation/allergen is set.
+      properties:
+        kind:
+          type: string
+          enum: [ingredient, relation, allergen]
+        ingredient:
+          $ref: "#/components/schemas/GraphIngredientNode"
+        relation:
+          type: string
+        note:
+          type: ["string", "null"]
+        allergen:
+          $ref: "#/components/schemas/GraphAllergenNode"
+      required:
+        - kind
+
+    CitationChain:
+      type: object
+      properties:
+        sourceText:
+          type: string
+        matched:
+          $ref: "#/components/schemas/GraphIngredientNode"
+        matchDistance:
+          type: number
+        allergen:
+          $ref: "#/components/schemas/GraphAllergenNode"
+        links:
+          type: array
+          items:
+            $ref: "#/components/schemas/CitationLink"
+      required:
+        - sourceText
+        - matched
+        - matchDistance
+        - allergen
+        - links
 
     MenuAnalysisResult:
       type: object

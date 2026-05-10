@@ -28,9 +28,13 @@ import type {
   GeminiMessage,
   GeminiMessageInput,
   HealthStatus,
+  LookupIngredientGraphNode200,
+  LookupIngredientGraphNodeParams,
   MenuAnalysisInput,
   OrderingInstructionsInput,
   OrderingInstructionsResult,
+  SearchIngredientGraph200,
+  SearchIngredientGraphParams,
   TtsInput,
 } from "./api.schemas";
 
@@ -721,9 +725,10 @@ export const useGenerateGeminiImage = <
  * Streams menu analysis as Server-Sent Events. Event types:
 - `layout`: initial detected items with bounding boxes (placeholders).
 - `item`: a single fully analyzed item (translation + safety verdict).
-- `progress`: { completed, total }.
-- `done`: stream finished successfully.
-- `error`: terminal error.
+- `item_error`: a single item failed to analyze; other items keep going.
+- `progress`: { completed, failed, total }.
+- `done`: stream finished (after all items have settled).
+- `error`: terminal stream-level error.
 
  * @summary Analyze a menu photo using Gemini vision (SSE stream)
  */
@@ -809,6 +814,225 @@ export const useAnalyzeMenu = <
 > => {
   return useMutation(getAnalyzeMenuMutationOptions(options));
 };
+
+/**
+ * Resolves a free-text ingredient string (any language) to the top-k closest
+canonical ingredient nodes via exact-alias + pgvector cosine search, and
+also returns the full citation chains reaching each requested allergen.
+
+ * @summary Free-text top-k ingredient search with optional citation chains
+ */
+export const getSearchIngredientGraphUrl = (
+  params: SearchIngredientGraphParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/menu/ingredient-graph/search?${stringifiedParams}`
+    : `/api/menu/ingredient-graph/search`;
+};
+
+export const searchIngredientGraph = async (
+  params: SearchIngredientGraphParams,
+  options?: RequestInit,
+): Promise<SearchIngredientGraph200> => {
+  return customFetch<SearchIngredientGraph200>(
+    getSearchIngredientGraphUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getSearchIngredientGraphQueryKey = (
+  params?: SearchIngredientGraphParams,
+) => {
+  return [
+    `/api/menu/ingredient-graph/search`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getSearchIngredientGraphQueryOptions = <
+  TData = Awaited<ReturnType<typeof searchIngredientGraph>>,
+  TError = ErrorType<unknown>,
+>(
+  params: SearchIngredientGraphParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchIngredientGraph>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getSearchIngredientGraphQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof searchIngredientGraph>>
+  > = ({ signal }) =>
+    searchIngredientGraph(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof searchIngredientGraph>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type SearchIngredientGraphQueryResult = NonNullable<
+  Awaited<ReturnType<typeof searchIngredientGraph>>
+>;
+export type SearchIngredientGraphQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Free-text top-k ingredient search with optional citation chains
+ */
+
+export function useSearchIngredientGraph<
+  TData = Awaited<ReturnType<typeof searchIngredientGraph>>,
+  TError = ErrorType<unknown>,
+>(
+  params: SearchIngredientGraphParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof searchIngredientGraph>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getSearchIngredientGraphQueryOptions(params, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Look up an ingredient knowledge-graph node by slug (used by citation UI)
+ */
+export const getLookupIngredientGraphNodeUrl = (
+  params: LookupIngredientGraphNodeParams,
+) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? "null" : value.toString());
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0
+    ? `/api/menu/ingredient-graph/lookup?${stringifiedParams}`
+    : `/api/menu/ingredient-graph/lookup`;
+};
+
+export const lookupIngredientGraphNode = async (
+  params: LookupIngredientGraphNodeParams,
+  options?: RequestInit,
+): Promise<LookupIngredientGraphNode200> => {
+  return customFetch<LookupIngredientGraphNode200>(
+    getLookupIngredientGraphNodeUrl(params),
+    {
+      ...options,
+      method: "GET",
+    },
+  );
+};
+
+export const getLookupIngredientGraphNodeQueryKey = (
+  params?: LookupIngredientGraphNodeParams,
+) => {
+  return [
+    `/api/menu/ingredient-graph/lookup`,
+    ...(params ? [params] : []),
+  ] as const;
+};
+
+export const getLookupIngredientGraphNodeQueryOptions = <
+  TData = Awaited<ReturnType<typeof lookupIngredientGraphNode>>,
+  TError = ErrorType<GeminiError>,
+>(
+  params: LookupIngredientGraphNodeParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof lookupIngredientGraphNode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getLookupIngredientGraphNodeQueryKey(params);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof lookupIngredientGraphNode>>
+  > = ({ signal }) =>
+    lookupIngredientGraphNode(params, { signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof lookupIngredientGraphNode>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type LookupIngredientGraphNodeQueryResult = NonNullable<
+  Awaited<ReturnType<typeof lookupIngredientGraphNode>>
+>;
+export type LookupIngredientGraphNodeQueryError = ErrorType<GeminiError>;
+
+/**
+ * @summary Look up an ingredient knowledge-graph node by slug (used by citation UI)
+ */
+
+export function useLookupIngredientGraphNode<
+  TData = Awaited<ReturnType<typeof lookupIngredientGraphNode>>,
+  TError = ErrorType<GeminiError>,
+>(
+  params: LookupIngredientGraphNodeParams,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof lookupIngredientGraphNode>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getLookupIngredientGraphNodeQueryOptions(
+    params,
+    options,
+  );
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Generate ordering instructions in the user's native language

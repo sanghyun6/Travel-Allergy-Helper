@@ -9,6 +9,7 @@ import {
   ShieldCheck, XCircle, Plus, Check, RefreshCw, X,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { CitationChainList } from "@/components/citation-chain";
 
 const MENU_LANGUAGES = [
   "Auto-detect",
@@ -535,6 +536,10 @@ export default function CameraPage() {
               </div>
 
               <p className="text-sm text-foreground/80 leading-relaxed">{selectedItem.description}</p>
+
+              {selectedItem.citations && selectedItem.citations.length > 0 && (
+                <CitationChainList chains={selectedItem.citations} />
+              )}
 
               {(selectedItem.conflictingRestrictions.length > 0 || selectedItem.allergenFlags.length > 0) && (
                 <div className="space-y-3 bg-muted/50 p-3 rounded-2xl">

@@ -1,0 +1,1471 @@
+{
+  "capturedAt": "2026-05-10T03:11:10.644Z",
+  "off": {
+    "peanut": [
+      {
+        "language": "en",
+        "alias": "Peanuts"
+      },
+      {
+        "language": "mt",
+        "alias": "Karawett"
+      },
+      {
+        "language": "ro",
+        "alias": "Arahide"
+      },
+      {
+        "language": "fi",
+        "alias": "Maapähkinät"
+      },
+      {
+        "language": "sr",
+        "alias": "Kikiriki"
+      },
+      {
+        "language": "it",
+        "alias": "Arachidi"
+      },
+      {
+        "language": "zh",
+        "alias": "花生"
+      },
+      {
+        "language": "nb",
+        "alias": "Peanøtt"
+      },
+      {
+        "language": "ar",
+        "alias": "فول سوداني"
+      },
+      {
+        "language": "sl",
+        "alias": "Arašidi"
+      },
+      {
+        "language": "de",
+        "alias": "Erdnüsse"
+      },
+      {
+        "language": "sv",
+        "alias": "Jordnöt"
+      },
+      {
+        "language": "el",
+        "alias": "Αραχίδες"
+      },
+      {
+        "language": "es",
+        "alias": "Cacahuetes"
+      },
+      {
+        "language": "ca",
+        "alias": "Cacauets"
+      },
+      {
+        "language": "hu",
+        "alias": "Földimogyoró"
+      },
+      {
+        "language": "et",
+        "alias": "Maapähklid"
+      },
+      {
+        "language": "fr",
+        "alias": "Arachides"
+      },
+      {
+        "language": "ga",
+        "alias": "Piseanna"
+      },
+      {
+        "language": "cs",
+        "alias": "Jádra podzemnice olejné"
+      },
+      {
+        "language": "nl",
+        "alias": "Pinda"
+      },
+      {
+        "language": "lt",
+        "alias": "Žemės riešutai"
+      },
+      {
+        "language": "bg",
+        "alias": "Фъстъци"
+      },
+      {
+        "language": "ja",
+        "alias": "落花生"
+      },
+      {
+        "language": "ru",
+        "alias": "Арахис"
+      },
+      {
+        "language": "he",
+        "alias": "בוטנים"
+      },
+      {
+        "language": "th",
+        "alias": "ถั่วลิสง"
+      },
+      {
+        "language": "da",
+        "alias": "Jordnødder"
+      },
+      {
+        "language": "pl",
+        "alias": "Orzeszki ziemne"
+      },
+      {
+        "language": "sk",
+        "alias": "Arašidy"
+      },
+      {
+        "language": "lv",
+        "alias": "Zemesrieksti"
+      },
+      {
+        "language": "pt",
+        "alias": "Amendoins"
+      }
+    ],
+    "tree-nut": [
+      {
+        "language": "lv",
+        "alias": "Rieksti"
+      },
+      {
+        "language": "pt",
+        "alias": "Nozes"
+      },
+      {
+        "language": "sk",
+        "alias": "Orechy"
+      },
+      {
+        "language": "da",
+        "alias": "Nødder"
+      },
+      {
+        "language": "pl",
+        "alias": "Orzechy"
+      },
+      {
+        "language": "he",
+        "alias": "אגוזים"
+      },
+      {
+        "language": "th",
+        "alias": "อัลมอนด์"
+      },
+      {
+        "language": "ja",
+        "alias": "くるみ/アーモンド"
+      },
+      {
+        "language": "ru",
+        "alias": "Орехи"
+      },
+      {
+        "language": "bg",
+        "alias": "Ядки"
+      },
+      {
+        "language": "lt",
+        "alias": "Riešutai"
+      },
+      {
+        "language": "nl",
+        "alias": "Noten"
+      },
+      {
+        "language": "cs",
+        "alias": "Skořápkové plody"
+      },
+      {
+        "language": "ga",
+        "alias": "Cnónna"
+      },
+      {
+        "language": "hr",
+        "alias": "Orašaste plodove"
+      },
+      {
+        "language": "bs",
+        "alias": "Bademe"
+      },
+      {
+        "language": "fr",
+        "alias": "Fruits à coque"
+      },
+      {
+        "language": "et",
+        "alias": "Pähklid"
+      },
+      {
+        "language": "hu",
+        "alias": "Diófélék"
+      },
+      {
+        "language": "el",
+        "alias": "Καρποί με κέλυφος"
+      },
+      {
+        "language": "ca",
+        "alias": "Fruits de closca"
+      },
+      {
+        "language": "es",
+        "alias": "Frutos de cáscara"
+      },
+      {
+        "language": "sv",
+        "alias": "Nötter"
+      },
+      {
+        "language": "de",
+        "alias": "Schalenfrüchte"
+      },
+      {
+        "language": "ar",
+        "alias": "بندقة"
+      },
+      {
+        "language": "nb",
+        "alias": "Nøtter"
+      },
+      {
+        "language": "sl",
+        "alias": "Oreški"
+      },
+      {
+        "language": "zh",
+        "alias": "坚果"
+      },
+      {
+        "language": "it",
+        "alias": "Frutta a guscio"
+      },
+      {
+        "language": "sr",
+        "alias": "Jezgrasto voće"
+      },
+      {
+        "language": "ro",
+        "alias": "Fructe cu coajă lemnoasă"
+      },
+      {
+        "language": "fi",
+        "alias": "Pähkinät"
+      },
+      {
+        "language": "mt",
+        "alias": "Ġewż"
+      },
+      {
+        "language": "en",
+        "alias": "Nuts"
+      },
+      {
+        "language": "is",
+        "alias": "Hnetur"
+      }
+    ],
+    "milk": [
+      {
+        "language": "en",
+        "alias": "Milk"
+      },
+      {
+        "language": "mt",
+        "alias": "Ħalib"
+      },
+      {
+        "language": "is",
+        "alias": "Mjólk"
+      },
+      {
+        "language": "sr",
+        "alias": "Mleko"
+      },
+      {
+        "language": "fi",
+        "alias": "Maito"
+      },
+      {
+        "language": "ro",
+        "alias": "Lapte"
+      },
+      {
+        "language": "it",
+        "alias": "Latte"
+      },
+      {
+        "language": "nb",
+        "alias": "Melk"
+      },
+      {
+        "language": "ar",
+        "alias": "حليبب"
+      },
+      {
+        "language": "zh",
+        "alias": "乳"
+      },
+      {
+        "language": "de",
+        "alias": "Milch"
+      },
+      {
+        "language": "sv",
+        "alias": "Mjölk"
+      },
+      {
+        "language": "el",
+        "alias": "Γάλα"
+      },
+      {
+        "language": "es",
+        "alias": "Leche"
+      },
+      {
+        "language": "ca",
+        "alias": "Llet"
+      },
+      {
+        "language": "hu",
+        "alias": "Tej"
+      },
+      {
+        "language": "et",
+        "alias": "Laktoos"
+      },
+      {
+        "language": "fr",
+        "alias": "Lait"
+      },
+      {
+        "language": "ga",
+        "alias": "Bainne"
+      },
+      {
+        "language": "hr",
+        "alias": "Laktoza"
+      },
+      {
+        "language": "lt",
+        "alias": "Išrūgų"
+      },
+      {
+        "language": "cs",
+        "alias": "Mléko"
+      },
+      {
+        "language": "bg",
+        "alias": "Суроватка"
+      },
+      {
+        "language": "ru",
+        "alias": "Молоко"
+      },
+      {
+        "language": "da",
+        "alias": "Mælk"
+      },
+      {
+        "language": "he",
+        "alias": "חלב"
+      },
+      {
+        "language": "th",
+        "alias": "นม"
+      },
+      {
+        "language": "sk",
+        "alias": "Mlieko"
+      },
+      {
+        "language": "lv",
+        "alias": "Laktozi"
+      },
+      {
+        "language": "pt",
+        "alias": "Leite"
+      }
+    ],
+    "egg": [
+      {
+        "language": "lv",
+        "alias": "Olas"
+      },
+      {
+        "language": "pt",
+        "alias": "Ovos"
+      },
+      {
+        "language": "sk",
+        "alias": "Vajcia"
+      },
+      {
+        "language": "da",
+        "alias": "Æg"
+      },
+      {
+        "language": "pl",
+        "alias": "Jaja"
+      },
+      {
+        "language": "he",
+        "alias": "ביצים"
+      },
+      {
+        "language": "th",
+        "alias": "ไข่"
+      },
+      {
+        "language": "ru",
+        "alias": "Яйца"
+      },
+      {
+        "language": "ja",
+        "alias": "卵"
+      },
+      {
+        "language": "lt",
+        "alias": "Kiaušiniai"
+      },
+      {
+        "language": "nl",
+        "alias": "Eieren"
+      },
+      {
+        "language": "cs",
+        "alias": "Vejce"
+      },
+      {
+        "language": "ga",
+        "alias": "Uibheacha"
+      },
+      {
+        "language": "fr",
+        "alias": "Œufs"
+      },
+      {
+        "language": "et",
+        "alias": "Munad"
+      },
+      {
+        "language": "hu",
+        "alias": "Tojás"
+      },
+      {
+        "language": "el",
+        "alias": "Αυγά"
+      },
+      {
+        "language": "es",
+        "alias": "Huevos"
+      },
+      {
+        "language": "ca",
+        "alias": "Ous"
+      },
+      {
+        "language": "de",
+        "alias": "Eier"
+      },
+      {
+        "language": "sv",
+        "alias": "Ägg"
+      },
+      {
+        "language": "ar",
+        "alias": "بيض"
+      },
+      {
+        "language": "nb",
+        "alias": "Egg"
+      },
+      {
+        "language": "sl",
+        "alias": "Jajca"
+      },
+      {
+        "language": "zh",
+        "alias": "雞蛋"
+      },
+      {
+        "language": "it",
+        "alias": "Uova"
+      },
+      {
+        "language": "fi",
+        "alias": "Munat"
+      },
+      {
+        "language": "ro",
+        "alias": "Ouă"
+      },
+      {
+        "language": "en",
+        "alias": "Eggs"
+      },
+      {
+        "language": "mt",
+        "alias": "Bajd"
+      }
+    ],
+    "wheat": [
+      {
+        "language": "bg",
+        "alias": "Глутен"
+      },
+      {
+        "language": "lt",
+        "alias": "Avižos"
+      },
+      {
+        "language": "cs",
+        "alias": "Lepek"
+      },
+      {
+        "language": "nl",
+        "alias": "Gluten"
+      },
+      {
+        "language": "ga",
+        "alias": "Glútan"
+      },
+      {
+        "language": "lv",
+        "alias": "Auzas"
+      },
+      {
+        "language": "pt",
+        "alias": "Glúten"
+      },
+      {
+        "language": "sk",
+        "alias": "Pšenica"
+      },
+      {
+        "language": "he",
+        "alias": "גלוטן"
+      },
+      {
+        "language": "th",
+        "alias": "กลูเต็น"
+      },
+      {
+        "language": "ru",
+        "alias": "Глютен"
+      },
+      {
+        "language": "ja",
+        "alias": "小麦/そば"
+      },
+      {
+        "language": "ar",
+        "alias": "غلوتين"
+      },
+      {
+        "language": "ee",
+        "alias": "Nisu"
+      },
+      {
+        "language": "zh",
+        "alias": "麸质"
+      },
+      {
+        "language": "it",
+        "alias": "Glutine"
+      },
+      {
+        "language": "fi",
+        "alias": "Gluteeni"
+      },
+      {
+        "language": "mt",
+        "alias": "Glutina"
+      },
+      {
+        "language": "et",
+        "alias": "Gluteen"
+      },
+      {
+        "language": "hu",
+        "alias": "Glutén"
+      },
+      {
+        "language": "el",
+        "alias": "Γλουτένη"
+      }
+    ],
+    "soy": [
+      {
+        "language": "is",
+        "alias": "Soja"
+      },
+      {
+        "language": "mt",
+        "alias": "Soybeans"
+      },
+      {
+        "language": "fi",
+        "alias": "Soija"
+      },
+      {
+        "language": "ro",
+        "alias": "Soia"
+      },
+      {
+        "language": "zh",
+        "alias": "大豆类制品"
+      },
+      {
+        "language": "nb",
+        "alias": "Soya"
+      },
+      {
+        "language": "ar",
+        "alias": "فول الصويا"
+      },
+      {
+        "language": "sl",
+        "alias": "Zrnja soje"
+      },
+      {
+        "language": "el",
+        "alias": "Σόγια"
+      },
+      {
+        "language": "hu",
+        "alias": "Szója"
+      },
+      {
+        "language": "ga",
+        "alias": "Pónairí soighe"
+      },
+      {
+        "language": "cs",
+        "alias": "Sójové boby"
+      },
+      {
+        "language": "lt",
+        "alias": "Sojų pupelės"
+      },
+      {
+        "language": "bg",
+        "alias": "Соя"
+      },
+      {
+        "language": "ja",
+        "alias": "大豆"
+      },
+      {
+        "language": "he",
+        "alias": "סויה"
+      },
+      {
+        "language": "th",
+        "alias": "ถั่วเหลือง"
+      },
+      {
+        "language": "sk",
+        "alias": "Sójové bôby"
+      },
+      {
+        "language": "lv",
+        "alias": "Sojas pupas"
+      }
+    ],
+    "fish": [
+      {
+        "language": "lv",
+        "alias": "Zivis"
+      },
+      {
+        "language": "pt",
+        "alias": "Peixe"
+      },
+      {
+        "language": "sk",
+        "alias": "Ryby"
+      },
+      {
+        "language": "he",
+        "alias": "דג"
+      },
+      {
+        "language": "th",
+        "alias": "ปลา"
+      },
+      {
+        "language": "da",
+        "alias": "Fisk"
+      },
+      {
+        "language": "pl",
+        "alias": "Ryba"
+      },
+      {
+        "language": "ru",
+        "alias": "Рыба"
+      },
+      {
+        "language": "ja",
+        "alias": "さけ/さば"
+      },
+      {
+        "language": "bg",
+        "alias": "Риба"
+      },
+      {
+        "language": "nl",
+        "alias": "Vis"
+      },
+      {
+        "language": "lt",
+        "alias": "Žuvis"
+      },
+      {
+        "language": "hr",
+        "alias": "Riba"
+      },
+      {
+        "language": "ga",
+        "alias": "Éisc"
+      },
+      {
+        "language": "fr",
+        "alias": "Poisson"
+      },
+      {
+        "language": "et",
+        "alias": "Kala"
+      },
+      {
+        "language": "hu",
+        "alias": "Hal"
+      },
+      {
+        "language": "el",
+        "alias": "Ψάρια"
+      },
+      {
+        "language": "ca",
+        "alias": "Peixos"
+      },
+      {
+        "language": "es",
+        "alias": "Pescado"
+      },
+      {
+        "language": "de",
+        "alias": "Fisch"
+      },
+      {
+        "language": "zh",
+        "alias": "魚"
+      },
+      {
+        "language": "ar",
+        "alias": "سمك"
+      },
+      {
+        "language": "sl",
+        "alias": "Ribe"
+      },
+      {
+        "language": "it",
+        "alias": "Pesce"
+      },
+      {
+        "language": "ro",
+        "alias": "Pește"
+      },
+      {
+        "language": "mt",
+        "alias": "Ħut"
+      },
+      {
+        "language": "en",
+        "alias": "Fish"
+      }
+    ],
+    "shellfish": [
+      {
+        "language": "bg",
+        "alias": "Ракообразни"
+      },
+      {
+        "language": "lt",
+        "alias": "Vėžiagyviai"
+      },
+      {
+        "language": "nl",
+        "alias": "Schaaldieren"
+      },
+      {
+        "language": "cs",
+        "alias": "Korýši"
+      },
+      {
+        "language": "ga",
+        "alias": "Crústach"
+      },
+      {
+        "language": "hr",
+        "alias": "Rakova"
+      },
+      {
+        "language": "fr",
+        "alias": "Crustacés"
+      },
+      {
+        "language": "lv",
+        "alias": "Vēžveidīgie"
+      },
+      {
+        "language": "pt",
+        "alias": "Crustáceos"
+      },
+      {
+        "language": "sk",
+        "alias": "Kôrovce"
+      },
+      {
+        "language": "da",
+        "alias": "Krebsdyr"
+      },
+      {
+        "language": "pl",
+        "alias": "Skorupiaki"
+      },
+      {
+        "language": "th",
+        "alias": "ครัสเตเชียน"
+      },
+      {
+        "language": "ru",
+        "alias": "Ракообразные"
+      },
+      {
+        "language": "ja",
+        "alias": "えび/かに"
+      },
+      {
+        "language": "ar",
+        "alias": "قشريات"
+      },
+      {
+        "language": "sl",
+        "alias": "Raki"
+      },
+      {
+        "language": "zh",
+        "alias": "甲壳亚门"
+      },
+      {
+        "language": "it",
+        "alias": "Crostacei"
+      },
+      {
+        "language": "fi",
+        "alias": "Äyriäiset"
+      },
+      {
+        "language": "ro",
+        "alias": "Crustacee"
+      },
+      {
+        "language": "mt",
+        "alias": "Krustaċej"
+      },
+      {
+        "language": "en",
+        "alias": "Crustaceans"
+      },
+      {
+        "language": "et",
+        "alias": "Koorikloomad"
+      },
+      {
+        "language": "hu",
+        "alias": "Rákfélék"
+      },
+      {
+        "language": "el",
+        "alias": "Καρκινοειδή"
+      },
+      {
+        "language": "ca",
+        "alias": "Crustacis"
+      },
+      {
+        "language": "de",
+        "alias": "Krebstiere"
+      },
+      {
+        "language": "sv",
+        "alias": "Kräftdjur"
+      }
+    ],
+    "sesame": [
+      {
+        "language": "ga",
+        "alias": "Síolta seasamain"
+      },
+      {
+        "language": "hr",
+        "alias": "Sezam"
+      },
+      {
+        "language": "fr",
+        "alias": "Graines de sésame"
+      },
+      {
+        "language": "bg",
+        "alias": "Сусамово семе"
+      },
+      {
+        "language": "lt",
+        "alias": "Sezamo sėklos"
+      },
+      {
+        "language": "nl",
+        "alias": "Sesamzaad"
+      },
+      {
+        "language": "cs",
+        "alias": "Sezamová semena"
+      },
+      {
+        "language": "pl",
+        "alias": "Nasiona sezamu"
+      },
+      {
+        "language": "da",
+        "alias": "Sesamfrø"
+      },
+      {
+        "language": "th",
+        "alias": "งา"
+      },
+      {
+        "language": "he",
+        "alias": "שומשום"
+      },
+      {
+        "language": "ja",
+        "alias": "ごま"
+      },
+      {
+        "language": "ru",
+        "alias": "Сезам"
+      },
+      {
+        "language": "pt",
+        "alias": "Sementes de sésamo"
+      },
+      {
+        "language": "lv",
+        "alias": "Sezama sēklas"
+      },
+      {
+        "language": "sk",
+        "alias": "Sezamové semeno"
+      },
+      {
+        "language": "sr",
+        "alias": "Susam"
+      },
+      {
+        "language": "fi",
+        "alias": "Seesaminsiemenet"
+      },
+      {
+        "language": "ro",
+        "alias": "Semințe de susan"
+      },
+      {
+        "language": "mt",
+        "alias": "Ġulġlien"
+      },
+      {
+        "language": "en",
+        "alias": "Sesame seeds"
+      },
+      {
+        "language": "sl",
+        "alias": "Sezamovo seme"
+      },
+      {
+        "language": "ar",
+        "alias": "سمسم"
+      },
+      {
+        "language": "zh",
+        "alias": "芝麻"
+      },
+      {
+        "language": "it",
+        "alias": "Semi di sesamo"
+      },
+      {
+        "language": "es",
+        "alias": "Granos de sésamo"
+      },
+      {
+        "language": "ca",
+        "alias": "Sèsam"
+      },
+      {
+        "language": "el",
+        "alias": "Σπόροι σησαμιού"
+      },
+      {
+        "language": "de",
+        "alias": "Sesam"
+      },
+      {
+        "language": "sv",
+        "alias": "Sesamfrön"
+      },
+      {
+        "language": "et",
+        "alias": "Seesamiseemned"
+      },
+      {
+        "language": "hu",
+        "alias": "Szezámmag"
+      }
+    ],
+    "mustard": [
+      {
+        "language": "lv",
+        "alias": "Sinepes"
+      },
+      {
+        "language": "pt",
+        "alias": "Mostarda"
+      },
+      {
+        "language": "sk",
+        "alias": "Horčica"
+      },
+      {
+        "language": "he",
+        "alias": "חרדל"
+      },
+      {
+        "language": "th",
+        "alias": "มัสตาร์ด"
+      },
+      {
+        "language": "da",
+        "alias": "Sennep"
+      },
+      {
+        "language": "pl",
+        "alias": "Gorczyca"
+      },
+      {
+        "language": "ja",
+        "alias": "マスタード"
+      },
+      {
+        "language": "ru",
+        "alias": "Горчица"
+      },
+      {
+        "language": "bg",
+        "alias": "Синап"
+      },
+      {
+        "language": "nl",
+        "alias": "Mosterd"
+      },
+      {
+        "language": "cs",
+        "alias": "Hořčice"
+      },
+      {
+        "language": "lt",
+        "alias": "Garstyčios"
+      },
+      {
+        "language": "hr",
+        "alias": "Gorušice"
+      },
+      {
+        "language": "ga",
+        "alias": "Mustard"
+      },
+      {
+        "language": "fr",
+        "alias": "Moutarde"
+      },
+      {
+        "language": "et",
+        "alias": "Sinep"
+      },
+      {
+        "language": "hu",
+        "alias": "Mustár"
+      },
+      {
+        "language": "el",
+        "alias": "Σινάπι"
+      },
+      {
+        "language": "ca",
+        "alias": "Mostassa"
+      },
+      {
+        "language": "es",
+        "alias": "Mostaza"
+      },
+      {
+        "language": "de",
+        "alias": "Senf"
+      },
+      {
+        "language": "sv",
+        "alias": "Senap"
+      },
+      {
+        "language": "zh",
+        "alias": "芥末醬"
+      },
+      {
+        "language": "ar",
+        "alias": "خردل"
+      },
+      {
+        "language": "sl",
+        "alias": "Gorčice"
+      },
+      {
+        "language": "it",
+        "alias": "Senape"
+      },
+      {
+        "language": "fi",
+        "alias": "Sinappi"
+      },
+      {
+        "language": "ro",
+        "alias": "Muștar"
+      },
+      {
+        "language": "mt",
+        "alias": "Mustarda"
+      }
+    ],
+    "sulphite": [
+      {
+        "language": "th",
+        "alias": "ซัลเฟอร์ไดออกไซด์และซัลไฟต์"
+      },
+      {
+        "language": "da",
+        "alias": "Svovldioxid og sulfitter"
+      },
+      {
+        "language": "pl",
+        "alias": "Dwutlenek siarki i siarczyny"
+      },
+      {
+        "language": "ja",
+        "alias": "二酸化硫黄および亜硫酸塩"
+      },
+      {
+        "language": "ru",
+        "alias": "Диоксид и сульфит серы"
+      },
+      {
+        "language": "lv",
+        "alias": "Sēra dioksīds un sulfīt"
+      },
+      {
+        "language": "pt",
+        "alias": "Dióxido de enxofre e sulfitos"
+      },
+      {
+        "language": "sk",
+        "alias": "Oxid siričitý a siričitany"
+      },
+      {
+        "language": "hr",
+        "alias": "Sulfita"
+      },
+      {
+        "language": "ga",
+        "alias": "Dé-ocsaíd sulfair agus suilfítí"
+      },
+      {
+        "language": "fr",
+        "alias": "Anhydride sulfureux et sulfites"
+      },
+      {
+        "language": "bg",
+        "alias": "Серен диоксид и сулфити"
+      },
+      {
+        "language": "nl",
+        "alias": "Zwaveldioxide en sulfieten"
+      },
+      {
+        "language": "cs",
+        "alias": "Oxid siřičitý a siřičitany"
+      },
+      {
+        "language": "lt",
+        "alias": "Sieros dioksidas ir sulfitai"
+      },
+      {
+        "language": "el",
+        "alias": "Διοξείδιο του θείου και θειώδεις"
+      },
+      {
+        "language": "es",
+        "alias": "Dióxido de azufre y sulfitos"
+      },
+      {
+        "language": "sv",
+        "alias": "Svaveldioxid och sulfit"
+      },
+      {
+        "language": "de",
+        "alias": "Schwefeldioxid und Sulfite"
+      },
+      {
+        "language": "et",
+        "alias": "Vääveldioksiid ja sulfitid"
+      },
+      {
+        "language": "hu",
+        "alias": "Kén-dioxid és szulfitok"
+      },
+      {
+        "language": "ro",
+        "alias": "Dioxidul de sulf și sulfiții"
+      },
+      {
+        "language": "fi",
+        "alias": "Rikkioksidi ja sulfiitit"
+      },
+      {
+        "language": "sr",
+        "alias": "Sumpor dioksid i sulfiti"
+      },
+      {
+        "language": "en",
+        "alias": "Sulphur dioxide and sulphites"
+      },
+      {
+        "language": "mt",
+        "alias": "Dijossidu tal-kubrit u sulfiti"
+      },
+      {
+        "language": "zh",
+        "alias": "二氧化硫和亚硫酸盐"
+      },
+      {
+        "language": "nb",
+        "alias": "Svovedioxide en sulfieten"
+      },
+      {
+        "language": "ar",
+        "alias": "ثاني أكسيد الكبريت والكبريتات"
+      },
+      {
+        "language": "sl",
+        "alias": "Žveplov dioksid in sulfiti"
+      },
+      {
+        "language": "it",
+        "alias": "Anidride solforosa e solfiti"
+      }
+    ],
+    "celery": [
+      {
+        "language": "da",
+        "alias": "Selleri"
+      },
+      {
+        "language": "pl",
+        "alias": "Seler"
+      },
+      {
+        "language": "he",
+        "alias": "סלרי"
+      },
+      {
+        "language": "th",
+        "alias": "ขึ้นฉ่าย"
+      },
+      {
+        "language": "ru",
+        "alias": "Сельдерей"
+      },
+      {
+        "language": "ja",
+        "alias": "セロリ"
+      },
+      {
+        "language": "lv",
+        "alias": "Selerijas"
+      },
+      {
+        "language": "pt",
+        "alias": "Aipo"
+      },
+      {
+        "language": "sk",
+        "alias": "Zeler"
+      },
+      {
+        "language": "ga",
+        "alias": "Soilire"
+      },
+      {
+        "language": "hr",
+        "alias": "Celer"
+      },
+      {
+        "language": "fr",
+        "alias": "Céleri"
+      },
+      {
+        "language": "bg",
+        "alias": "Целина"
+      },
+      {
+        "language": "lt",
+        "alias": "Salierai"
+      },
+      {
+        "language": "nl",
+        "alias": "Selderij"
+      },
+      {
+        "language": "el",
+        "alias": "Σέλινο"
+      },
+      {
+        "language": "es",
+        "alias": "Apio"
+      },
+      {
+        "language": "ca",
+        "alias": "Api"
+      },
+      {
+        "language": "de",
+        "alias": "Sellerie"
+      },
+      {
+        "language": "et",
+        "alias": "Seller"
+      },
+      {
+        "language": "hu",
+        "alias": "Zeller"
+      },
+      {
+        "language": "ro",
+        "alias": "Țelină"
+      },
+      {
+        "language": "mt",
+        "alias": "Karfus"
+      },
+      {
+        "language": "en",
+        "alias": "Celery"
+      },
+      {
+        "language": "ar",
+        "alias": "كرفس"
+      },
+      {
+        "language": "sl",
+        "alias": "Listna zelena"
+      },
+      {
+        "language": "zh",
+        "alias": "旱芹"
+      },
+      {
+        "language": "it",
+        "alias": "Sedano"
+      }
+    ]
+  },
+  "usda": [
+    {
+      "ingredientSlug": "fish-sauce",
+      "description": "Fish sauce",
+      "category": "Soy-based condiments",
+      "fdcId": 2706457
+    },
+    {
+      "ingredientSlug": "oyster-sauce",
+      "description": "Oyster sauce",
+      "category": "Soy-based condiments",
+      "fdcId": 2707150
+    },
+    {
+      "ingredientSlug": "worcestershire",
+      "description": "Worcestershire sauce",
+      "category": "Mustard and other condiments",
+      "fdcId": 2707447
+    },
+    {
+      "ingredientSlug": "soy-sauce",
+      "description": "Soy sauce",
+      "category": "Soy-based condiments",
+      "fdcId": 2707442
+    },
+    {
+      "ingredientSlug": "tahini",
+      "description": "Tahini",
+      "category": "Nuts and seeds",
+      "fdcId": 2707587
+    },
+    {
+      "ingredientSlug": "ghee",
+      "description": "GHEE",
+      "category": "Butter & Spread",
+      "fdcId": 2171007
+    },
+    {
+      "ingredientSlug": "miso",
+      "description": "Miso",
+      "category": "Soy-based condiments",
+      "fdcId": 2707439
+    },
+    {
+      "ingredientSlug": "dashi",
+      "description": "DASHI POWDER UMAMI BROTH, DASHI POWDER",
+      "category": "Seasoning Mixes, Salts, Marinades & Tenderizers",
+      "fdcId": 2485326
+    },
+    {
+      "ingredientSlug": "panko",
+      "description": "PANKO",
+      "category": "Bread & Muffin Mixes",
+      "fdcId": 1862715
+    },
+    {
+      "ingredientSlug": "tamari",
+      "description": "TAMARI",
+      "category": "Oriental, Mexican & Ethnic Sauces",
+      "fdcId": 2082694
+    }
+  ]
+}

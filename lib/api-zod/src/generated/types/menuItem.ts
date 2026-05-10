@@ -5,6 +5,7 @@
  * API specification
  * OpenAPI spec version: 0.1.0
  */
+import type { CitationChain } from "./citationChain";
 import type { MenuAllergenFlag } from "./menuAllergenFlag";
 import type { MenuItemBoundingBox } from "./menuItemBoundingBox";
 
@@ -17,4 +18,5 @@ export interface MenuItem {
   translatedName: string;
   boundingBox?: MenuItemBoundingBox;
   nameBox?: MenuItemBoundingBox;
+  citations?: CitationChain[];
 }

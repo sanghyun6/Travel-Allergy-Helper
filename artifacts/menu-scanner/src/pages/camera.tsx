@@ -10,7 +10,15 @@ import {
   ShoppingBag, Settings as SettingsIcon, ArrowLeftRight, ArrowLeft,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { Capacitor } from "@capacitor/core";
+import {
+  Camera as CapCamera,
+  CameraResultType,
+  CameraSource,
+} from "@capacitor/camera";
 import { LANGUAGES } from "@/lib/constants";
+
+const isNativePlatform = Capacitor.isNativePlatform();
 import { CitationChainList } from "@/components/citation-chain";
 import { RiskScoreBadge, OutcomeButtons, useRiskScore } from "@/components/risk-score";
 import { CrossContamBadge, ReviewNoteInput } from "@/components/cross-contamination";
@@ -139,6 +147,14 @@ export default function CameraPage() {
   }, []);
 
   const startCamera = useCallback(async () => {
+    // On native (iOS/Android via Capacitor) we don't run a live preview —
+    // the OS camera UI is launched on shutter tap via Camera.getPhoto().
+    if (isNativePlatform) {
+      stopStream();
+      setCameraError(false);
+      setCameraMode("live");
+      return;
+    }
     stopStream();
     setCameraError(false);
     try {
@@ -216,7 +232,34 @@ export default function CameraPage() {
     });
   }, [analyze, menuLanguage, profile?.restrictions]);
 
-  const capturePhoto = useCallback(() => {
+  const capturePhoto = useCallback(async () => {
+    // Native (Capacitor): launch the OS camera UI and receive a data URL.
+    if (isNativePlatform) {
+      try {
+        const photo = await CapCamera.getPhoto({
+          quality: 85,
+          allowEditing: false,
+          resultType: CameraResultType.DataUrl,
+          source: CameraSource.Camera,
+          correctOrientation: true,
+        });
+        const dataUrl = photo.dataUrl;
+        if (!dataUrl) {
+          toast({ title: "Couldn't read photo", variant: "destructive" });
+          return;
+        }
+        setCameraMode("idle");
+        runAnalysis(dataUrl);
+      } catch (err) {
+        // User cancelled the native picker — stay on the camera screen silently.
+        const msg = err instanceof Error ? err.message : String(err);
+        if (!/cancel/i.test(msg)) {
+          toast({ title: "Camera error", description: msg, variant: "destructive" });
+        }
+      }
+      return;
+    }
+
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
@@ -227,7 +270,7 @@ export default function CameraPage() {
     stopStream();
     setCameraMode("idle");
     runAnalysis(dataUrl);
-  }, [stopStream, runAnalysis]);
+  }, [stopStream, runAnalysis, toast]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -380,7 +423,7 @@ export default function CameraPage() {
       {/* ── Live camera surface (full-bleed when no preview) ── */}
       {showCameraSurface && (
         <div className="absolute inset-0 z-0 bg-black">
-          {cameraMode === "live" && (
+          {cameraMode === "live" && !isNativePlatform && (
             <video
               ref={videoRef}
               autoPlay
@@ -388,6 +431,12 @@ export default function CameraPage() {
               muted
               className="w-full h-full object-cover"
             />
+          )}
+          {cameraMode === "live" && isNativePlatform && (
+            <div className="w-full h-full flex flex-col items-center justify-center text-white/70 text-center px-8 gap-3">
+              <Camera className="w-14 h-14 opacity-70" />
+              <p className="text-sm">Tap the shutter to take a photo of the menu.</p>
+            </div>
           )}
           {cameraMode !== "live" && !cameraError && (
             <div className="w-full h-full flex items-center justify-center text-white/60">

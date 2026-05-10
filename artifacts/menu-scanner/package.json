@@ -73,5 +73,9 @@
     "vite": "catalog:",
     "wouter": "^3.3.5",
     "zod": "catalog:"
+  },
+  "dependencies": {
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/core": "^8.3.3"
   }
 }

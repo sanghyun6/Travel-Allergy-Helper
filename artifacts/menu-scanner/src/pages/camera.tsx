@@ -723,15 +723,7 @@ export default function CameraPage() {
               aria-label={cameraMode === "live" ? "Snap picture" : "Upload from gallery"}
               data-testid="button-shutter"
             >
-              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center">
-                <div className="w-14 h-14 rounded-full border-[3px] border-primary flex items-center justify-center">
-                  {cameraMode === "live" ? (
-                    <Camera className="w-6 h-6 text-primary" strokeWidth={2.25} />
-                  ) : (
-                    <ImageIcon className="w-6 h-6 text-primary" strokeWidth={2.25} />
-                  )}
-                </div>
-              </div>
+              <div className="w-16 h-16 rounded-full bg-white" />
             </button>
 
             <button

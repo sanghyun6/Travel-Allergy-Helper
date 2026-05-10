@@ -439,7 +439,7 @@ export default function CameraPage() {
   const restrictionCount = profile?.restrictions.length || 0;
 
   return (
-    <div className="min-h-screen-safe bg-black flex flex-col max-w-md mx-auto w-full relative overflow-hidden">
+    <div className="h-screen-safe bg-black flex flex-col max-w-md mx-auto w-full relative overflow-hidden">
       {/* ── Live camera surface (full-bleed when no preview) ── */}
       {showCameraSurface && (
         <div className="absolute inset-0 z-0 bg-black">

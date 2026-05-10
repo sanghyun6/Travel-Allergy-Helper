@@ -31,6 +31,9 @@ html, body, #root {
   .min-h-screen-safe {
     min-height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
   }
+  .h-screen-safe {
+    height: calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
   .top-safe { top: env(safe-area-inset-top); }
 }
 @import "tw-animate-css";

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { BackboardClient } from "backboard-sdk";
+import { BackboardClient, type ChatMessagesResponse } from "backboard-sdk";
 import { SendChatMessageBody } from "@workspace/api-zod";
 
 const router = Router();
@@ -63,13 +63,16 @@ Keep responses concise and practical — the user is at a restaurant.`;
       activeThreadId = thread.threadId;
     }
 
-    const response = await client.addMessage(activeThreadId, {
+    const rawResponse = await client.addMessage(activeThreadId, {
       content: message,
       stream: false,
     });
 
+    const response = rawResponse as ChatMessagesResponse;
+    const reply = response.content ?? "";
+
     res.json({
-      reply: response.content,
+      reply,
       threadId: activeThreadId,
     });
   } catch (err) {

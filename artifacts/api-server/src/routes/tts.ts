@@ -49,7 +49,7 @@ router.post("/tts/speak", async (req, res) => {
   const voiceId = getVoiceForLanguage(language);
 
   try {
-    const response = await fetch(
+    const upstream = await fetch(
       `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
       {
         method: "POST",
@@ -68,23 +68,39 @@ router.post("/tts/speak", async (req, res) => {
       }
     );
 
-    if (!response.ok) {
-      const errText = await response.text();
-      console.error("ElevenLabs error:", response.status, errText);
+    if (!upstream.ok) {
+      const errText = await upstream.text();
+      console.error("ElevenLabs error:", upstream.status, errText);
       res.status(502).json({ error: "ElevenLabs TTS request failed" });
       return;
     }
 
-    const audioBuffer = await response.arrayBuffer();
-    const audioBase64 = Buffer.from(audioBuffer).toString("base64");
+    res.setHeader("Content-Type", "audio/mpeg");
+    res.setHeader("Transfer-Encoding", "chunked");
+    res.setHeader("Cache-Control", "no-cache");
 
-    res.json({
-      audioBase64,
-      mimeType: "audio/mpeg",
-    });
+    if (!upstream.body) {
+      res.status(502).json({ error: "No audio body returned" });
+      return;
+    }
+
+    const reader = upstream.body.getReader();
+    const writeChunk = async (): Promise<void> => {
+      const { done, value } = await reader.read();
+      if (done) {
+        res.end();
+        return;
+      }
+      res.write(Buffer.from(value));
+      return writeChunk();
+    };
+
+    await writeChunk();
   } catch (err) {
     console.error("TTS error:", err);
-    res.status(500).json({ error: "Failed to generate speech" });
+    if (!res.headersSent) {
+      res.status(500).json({ error: "Failed to generate speech" });
+    }
   }
 });
 

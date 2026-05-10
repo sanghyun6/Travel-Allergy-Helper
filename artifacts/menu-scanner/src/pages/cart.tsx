@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
 import { useProfile, useCart, useChatThread } from "@/context/store-context";
-import { useGetOrderingInstructions, useTextToSpeech, useSendChatMessage } from "@workspace/api-client-react";
+import { useGetOrderingInstructions, useSendChatMessage } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Play, Loader2, Trash2, ChevronRight, MessageCircle, Send, ShieldCheck, Volume2, ShoppingBag, X } from "lucide-react";
@@ -13,11 +13,11 @@ export default function CartPage() {
   const { threadId, setThreadId, clearThread } = useChatThread();
 
   const getInstructions = useGetOrderingInstructions();
-  const tts = useTextToSpeech();
   const chat = useSendChatMessage();
 
   const [chatMessage, setChatMessage] = useState("");
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const [ttsLoading, setTtsLoading] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -39,18 +39,27 @@ export default function CartPage() {
     });
   };
 
-  const playAudio = (text: string) => {
-    if (!menuLanguage) return;
-    tts.mutate(
-      { data: { text, language: menuLanguage } },
-      {
-        onSuccess: (data) => {
-          const audio = new Audio(`data:${data.mimeType};base64,${data.audioBase64}`);
-          audio.play();
-        },
-      }
-    );
-  };
+  const playAudio = useCallback(async (text: string) => {
+    if (!menuLanguage || ttsLoading) return;
+    setTtsLoading(true);
+    try {
+      const response = await fetch("/api/tts/speak", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, language: menuLanguage }),
+      });
+      if (!response.ok) throw new Error("TTS request failed");
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play();
+    } catch (err) {
+      console.error("TTS playback error:", err);
+    } finally {
+      setTtsLoading(false);
+    }
+  }, [menuLanguage, ttsLoading]);
 
   const sendChat = (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,10 +193,10 @@ export default function CartPage() {
                 variant="outline"
                 className="mt-4 w-full border-primary/30 hover:bg-primary/5 text-primary"
                 onClick={() => playAudio(getInstructions.data.fullOrderPhrase)}
-                disabled={tts.isPending}
+                disabled={ttsLoading}
                 data-testid="button-play-full-phrase"
               >
-                {tts.isPending
+                {ttsLoading
                   ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   : <Volume2 className="w-4 h-4 mr-2" />}
                 Play Audio

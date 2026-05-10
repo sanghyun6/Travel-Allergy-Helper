@@ -1,14 +1,16 @@
 import { useState, useRef, useCallback, useMemo, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useProfile, useCart, type MenuItem } from "@/context/store-context";
 import { useAnalyzeMenuStream, type AnalyzedMenuItem } from "@/hooks/use-analyze-menu-stream";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Camera, Image as ImageIcon, Loader2, AlertTriangle,
   ShieldCheck, XCircle, Plus, Check, RefreshCw, X,
+  ShoppingBag, Settings as SettingsIcon, ArrowLeftRight,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { LANGUAGES } from "@/lib/constants";
 import { CitationChainList } from "@/components/citation-chain";
 import { RiskScoreBadge, OutcomeButtons, useRiskScore } from "@/components/risk-score";
 import { CrossContamBadge, ReviewNoteInput } from "@/components/cross-contamination";
@@ -102,13 +104,16 @@ function cropStyle(bbox: BBox, imageDataUrl: string) {
 }
 
 export default function CameraPage() {
-  const { profile } = useProfile();
+  const { profile, setProfile } = useProfile();
   const { addToCart, cartItems } = useCart();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [menuLanguage, setMenuLanguage] = useState("Auto-detect");
+  const [targetLanguage, setTargetLanguage] = useState(profile?.nativeLanguage || "English");
   const [cameraMode, setCameraMode] = useState<"idle" | "live">("idle");
+  const [cameraError, setCameraError] = useState(false);
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
   const [selectedItem, setSelectedItem] = useState<AnyItem | null>(null);
   const lastRequestRef = useRef<{ dataUrl: string } | null>(null);
@@ -135,6 +140,7 @@ export default function CameraPage() {
 
   const startCamera = useCallback(async () => {
     stopStream();
+    setCameraError(false);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         video: { facingMode, width: { ideal: 1920 }, height: { ideal: 1080 } },
@@ -146,9 +152,30 @@ export default function CameraPage() {
       }
       setCameraMode("live");
     } catch {
-      toast({ title: "Camera unavailable", description: "Upload a photo instead.", variant: "destructive" });
+      setCameraError(true);
     }
-  }, [facingMode, stopStream, toast]);
+  }, [facingMode, stopStream]);
+
+  // Auto-start camera whenever we're in the idle scanning state with no preview.
+  useEffect(() => {
+    if (cameraMode === "idle" && !imagePreview && !cameraError) {
+      void startCamera();
+    }
+    return () => {
+      // stopStream handled by reset/capture; intentionally not stopping here
+      // to avoid tearing down the stream during normal re-renders.
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cameraMode, imagePreview]);
+
+  useEffect(() => {
+    return () => stopStream();
+  }, [stopStream]);
+
+  const handleTargetLanguageChange = useCallback((lang: string) => {
+    setTargetLanguage(lang);
+    if (profile) setProfile({ ...profile, nativeLanguage: lang });
+  }, [profile, setProfile]);
 
   const flipCamera = useCallback(async () => {
     const next = facingMode === "environment" ? "user" : "environment";
@@ -345,78 +372,128 @@ export default function CameraPage() {
     status === "starting" ||
     ((status === "layout" || status === "analyzing") && mergedItems.length === 0);
 
+  const showCameraSurface = !imagePreview;
+  const restrictionCount = profile?.restrictions.length || 0;
+
   return (
-    <div className="min-h-[100dvh] pb-20 bg-background flex flex-col max-w-md mx-auto w-full">
-      <header className="p-4 border-b bg-card sticky top-0 z-10">
-        <h1 className="text-xl font-bold">Scan Menu</h1>
-        <p className="text-sm text-muted-foreground">
-          Checking for {profile?.restrictions.length || 0} restriction{profile?.restrictions.length !== 1 ? "s" : ""}
-        </p>
-      </header>
+    <div className="min-h-[100dvh] bg-black flex flex-col max-w-md mx-auto w-full relative overflow-hidden">
+      {/* ── Live camera surface (full-bleed when no preview) ── */}
+      {showCameraSurface && (
+        <div className="absolute inset-0 z-0 bg-black">
+          {cameraMode === "live" && (
+            <video
+              ref={videoRef}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+          )}
+          {cameraMode !== "live" && !cameraError && (
+            <div className="w-full h-full flex items-center justify-center text-white/60">
+              <Loader2 className="w-8 h-8 animate-spin" />
+            </div>
+          )}
+          {cameraError && (
+            <div className="w-full h-full flex flex-col items-center justify-center text-white/80 text-center px-8 gap-4">
+              <Camera className="w-12 h-12 opacity-60" />
+              <p className="text-sm">Camera permission needed.<br/>Tap to enable, or upload a photo from your gallery.</p>
+              <Button onClick={startCamera} variant="secondary" className="rounded-full">Enable camera</Button>
+            </div>
+          )}
+          <canvas ref={canvasRef} className="hidden" />
 
-      <div className="flex-1 p-4 flex flex-col gap-4">
-        {/* Language selector */}
-        <div className="flex items-center gap-3">
-          <Label className="text-sm font-medium shrink-0">Menu language</Label>
-          <Select value={menuLanguage} onValueChange={setMenuLanguage}>
-            <SelectTrigger className="h-9 text-sm flex-1" data-testid="select-menu-language">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MENU_LANGUAGES.map(lang => (
-                <SelectItem key={lang} value={lang}>{lang}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Subtle vignette to make top/bottom bars readable */}
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/50 to-transparent" />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-black/60 to-transparent" />
         </div>
+      )}
 
-        {/* Live camera */}
-        {cameraMode === "live" && !imagePreview && (
-          <div className="flex flex-col gap-3">
-            <div className="relative rounded-2xl overflow-hidden bg-black aspect-video">
-              <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
-              <Button
-                variant="ghost" size="icon"
-                className="absolute top-2 right-2 bg-black/40 text-white hover:bg-black/60 rounded-full"
-                onClick={flipCamera}
-                data-testid="button-flip-camera"
+      {/* ── Top bar: language translation pill ── */}
+      {showCameraSurface && (
+        <div className="relative z-10 px-4 pt-4 pb-2 flex items-center gap-2">
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            data-testid="input-file-upload"
+          />
+
+          <div
+            className="flex-1 mx-auto flex items-center justify-between gap-1 rounded-full bg-white/95 backdrop-blur-md border-2 border-primary/70 shadow-lg pl-2 pr-2 h-11"
+            data-testid="language-pill"
+          >
+            <Select value={menuLanguage} onValueChange={setMenuLanguage}>
+              <SelectTrigger
+                className="h-9 border-0 shadow-none bg-transparent px-2 text-sm font-semibold text-foreground focus:ring-0 focus:ring-offset-0 [&>svg]:text-primary [&>svg]:opacity-100"
+                data-testid="select-menu-language"
               >
-                <RefreshCw className="w-4 h-4" />
-              </Button>
-            </div>
-            <canvas ref={canvasRef} className="hidden" />
-            <div className="flex gap-3">
-              <Button variant="outline" className="flex-1 h-12 rounded-xl" onClick={reset}>Cancel</Button>
-              <Button className="flex-1 h-12 rounded-xl" onClick={capturePhoto} data-testid="button-capture">
-                <Camera className="w-4 h-4 mr-2" /> Capture
-              </Button>
-            </div>
-          </div>
-        )}
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {MENU_LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
 
-        {/* Idle state */}
-        {cameraMode === "idle" && !imagePreview && (
-          <div className="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-6">
-            <div className="w-24 h-24 bg-primary/10 rounded-full flex items-center justify-center">
-              <Camera className="w-10 h-10 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold mb-2">Ready to scan?</h2>
-              <p className="text-muted-foreground">Take a photo of the menu to translate it and check for allergens.</p>
-            </div>
-            <input type="file" accept="image/*" className="hidden" ref={fileInputRef}
-              onChange={handleFileUpload} data-testid="input-file-upload" />
-            <div className="w-full space-y-3">
-              <Button size="lg" className="w-full h-14 text-lg rounded-xl" onClick={startCamera} data-testid="button-open-camera">
-                <Camera className="mr-2 w-5 h-5" /> Use Camera
-              </Button>
-              <Button variant="outline" size="lg" className="w-full h-14 text-lg rounded-xl"
-                onClick={() => fileInputRef.current?.click()} data-testid="button-upload-gallery">
-                <ImageIcon className="mr-2 w-5 h-5" /> Upload from Gallery
-              </Button>
-            </div>
+            <ArrowLeftRight className="w-4 h-4 text-primary shrink-0" aria-hidden />
+
+            <Select value={targetLanguage} onValueChange={handleTargetLanguageChange}>
+              <SelectTrigger
+                className="h-9 border-0 shadow-none bg-transparent px-2 text-sm font-semibold text-foreground focus:ring-0 focus:ring-offset-0 [&>svg]:text-primary [&>svg]:opacity-100"
+                data-testid="select-target-language"
+              >
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map((lang) => (
+                  <SelectItem key={lang} value={lang}>{lang}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-        )}
+
+          {restrictionCount > 0 && (
+            <button
+              type="button"
+              onClick={() => setLocation("/settings")}
+              className="h-11 px-3 rounded-full bg-white/95 backdrop-blur-md border border-white/50 shadow-md text-xs font-semibold text-foreground flex items-center gap-1.5"
+              data-testid="button-restrictions-chip"
+              aria-label={`${restrictionCount} active restriction${restrictionCount !== 1 ? "s" : ""}`}
+            >
+              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
+              {restrictionCount}
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* ── Spacer pushing bottom bar / preview content into view ── */}
+      {showCameraSurface && <div className="flex-1 relative z-0" />}
+
+      {/* ── Results: image + overlay (replaces camera surface when imagePreview is set) ── */}
+      {imagePreview && (
+        <div className="relative z-0 flex-1 bg-background overflow-y-auto">
+          <header className="px-4 pt-4 pb-3 sticky top-0 bg-background/95 backdrop-blur z-10 flex items-center gap-3 border-b">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={reset}
+              className="rounded-full h-9 px-3"
+              data-testid="button-back-to-camera"
+            >
+              <X className="w-4 h-4 mr-1" /> New scan
+            </Button>
+            <div className="text-sm text-muted-foreground truncate">
+              {detectedLanguage || menuLanguage} → {targetLanguage}
+            </div>
+          </header>
+
+          <div className="p-4 flex flex-col gap-4 pb-8">
+
 
         {/* Results: image + overlay */}
         {imagePreview && (

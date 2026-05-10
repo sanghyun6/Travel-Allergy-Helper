@@ -6,7 +6,7 @@ export function BottomNav() {
   const [location] = useLocation();
   const { cartItems } = useCart();
   
-  if (location === "/" || location === "/onboarding") return null;
+  if (location === "/" || location === "/onboarding" || location === "/camera") return null;
 
   const links: { href: string; icon: typeof Camera; label: string; badge?: number | null }[] = [
     { href: "/camera", icon: Camera, label: "Camera" },

@@ -699,7 +699,7 @@ export default function CameraPage() {
       {/* ── Bottom shutter bar (idle/live mode only) ── */}
       {showCameraSurface && (
         <div className="relative z-10 mt-auto">
-          <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 pt-3 pb-6 flex items-end justify-between">
+          <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 flex items-end justify-between pl-[72px] pr-[72px] pt-[12px] pb-[24px]">
             <button
               type="button"
               onClick={() => setLocation("/cart")}

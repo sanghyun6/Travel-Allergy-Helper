@@ -133,7 +133,7 @@ Always flag common allergens even if the user did not list them: peanuts, tree n
 Return ONLY valid JSON of shape:
 {"detectedLanguage":"language name","items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0},"translatedName":"...","description":"...","safetyLevel":"safe","conflictingRestrictions":[],"allergenFlags":[]}]}`;
 
-    const response = await ai.models.generateContent({
+    const stream = await ai.models.generateContentStream({
       model: "gemini-2.5-flash",
       contents: [
         {
@@ -146,102 +146,178 @@ Return ONLY valid JSON of shape:
       ],
       config: {
         responseMimeType: "application/json",
-        maxOutputTokens: 8192,
+        maxOutputTokens: 4096,
         thinkingConfig: { thinkingBudget: 0 },
         abortSignal: abortController.signal,
       },
     });
 
+    type RawItem = {
+      name?: string;
+      box?: BBox;
+      translatedName?: string;
+      description?: string;
+      safetyLevel?: AnalyzedItem["safetyLevel"];
+      conflictingRestrictions?: unknown;
+      allergenFlags?: unknown;
+    };
+
+    const normalize = (it: RawItem, i: number): AnalyzedItem & { id: number } => {
+      const box = it.box;
+      return {
+        name: it.name as string,
+        translatedName:
+          typeof it.translatedName === "string" && it.translatedName.trim()
+            ? it.translatedName
+            : (it.name as string),
+        description: typeof it.description === "string" ? it.description : "",
+        safetyLevel:
+          it.safetyLevel === "danger" ||
+          it.safetyLevel === "warning" ||
+          it.safetyLevel === "safe"
+            ? it.safetyLevel
+            : "warning",
+        conflictingRestrictions: Array.isArray(it.conflictingRestrictions)
+          ? (it.conflictingRestrictions as unknown[]).filter(
+              (s): s is string => typeof s === "string",
+            )
+          : [],
+        allergenFlags: Array.isArray(it.allergenFlags)
+          ? (it.allergenFlags as unknown[]).filter(
+              (f): f is AllergenFlag =>
+                !!f &&
+                typeof (f as AllergenFlag).name === "string" &&
+                typeof (f as AllergenFlag).severity === "string",
+            )
+          : [],
+        boundingBox: box,
+        nameBox: box,
+        citations: [],
+        id: i,
+      };
+    };
+
+    // Streaming JSON walker: accumulate text, scan the items array for
+    // top-level objects, and emit each as soon as its closing `}` lands.
+    let buffer = "";
+    let cursor = 0;            // index in buffer to resume scanning from
+    let inItems = false;       // have we crossed `"items":[`?
+    let depth = 0;             // brace depth inside the items array
+    let itemStart = -1;        // start index of the current top-level item
+    let inString = false;      // currently inside a JSON string?
+    let escape = false;        // previous char was a backslash inside a string?
+    let layoutSent = false;
+    let detectedLanguage = menuLanguage;
+    let nextId = 0;
+
+    const tryEmitDetectedLanguage = () => {
+      if (layoutSent) return;
+      const m = buffer.match(/"detectedLanguage"\s*:\s*"([^"]+)"/);
+      if (m) detectedLanguage = m[1] || menuLanguage;
+    };
+
+    const emitLayoutOnce = () => {
+      if (layoutSent) return;
+      tryEmitDetectedLanguage();
+      send("layout", { items: [], detectedLanguage });
+      layoutSent = true;
+    };
+
+    const processBuffer = () => {
+      if (!inItems) {
+        const idx = buffer.indexOf('"items"', cursor);
+        if (idx === -1) return;
+        const bracket = buffer.indexOf("[", idx);
+        if (bracket === -1) return;
+        cursor = bracket + 1;
+        inItems = true;
+        emitLayoutOnce();
+      }
+
+      while (cursor < buffer.length) {
+        const ch = buffer[cursor];
+        if (inString) {
+          if (escape) escape = false;
+          else if (ch === "\\") escape = true;
+          else if (ch === '"') inString = false;
+          cursor++;
+          continue;
+        }
+        if (ch === '"') {
+          inString = true;
+          cursor++;
+          continue;
+        }
+        if (ch === "{") {
+          if (depth === 0) itemStart = cursor;
+          depth++;
+          cursor++;
+          continue;
+        }
+        if (ch === "}") {
+          depth--;
+          cursor++;
+          if (depth === 0 && itemStart !== -1) {
+            const slice = buffer.slice(itemStart, cursor);
+            itemStart = -1;
+            try {
+              const obj = JSON.parse(slice) as RawItem;
+              if (obj && typeof obj.name === "string" && obj.name.trim()) {
+                const id = nextId++;
+                const item = normalize(obj, id);
+                send("item", { id, item });
+                send("progress", { completed: id + 1, failed: 0, total: id + 1 });
+              }
+            } catch {
+              // Partial / malformed item — skip silently.
+            }
+          }
+          continue;
+        }
+        if (ch === "]" && depth === 0) {
+          // Hit end of items array.
+          cursor++;
+          break;
+        }
+        cursor++;
+      }
+    };
+
+    for await (const chunk of stream) {
+      if (clientGone) return finish();
+      const text = chunk.text ?? "";
+      if (!text) continue;
+      buffer += text;
+      // Try to grab detectedLanguage early so the layout event has it.
+      if (!layoutSent) tryEmitDetectedLanguage();
+      processBuffer();
+    }
+
     if (clientGone) return finish();
 
-    type RawItem = Partial<AnalyzedItem> & {
-      box?: BBox;
-      boundingBox?: BBox;
-      nameBox?: BBox;
-      name?: string;
-    };
-    let parsed: { items?: RawItem[]; detectedLanguage?: string } = {};
-    try {
-      parsed = JSON.parse(response.text ?? "{}");
-    } catch {
-      parsed = {};
+    // Final flush (in case the stream never crossed `"items":[`).
+    if (!layoutSent) {
+      try {
+        const parsed = JSON.parse(buffer) as { items?: RawItem[]; detectedLanguage?: string };
+        detectedLanguage = parsed.detectedLanguage ?? detectedLanguage;
+        const arr = Array.isArray(parsed.items) ? parsed.items : [];
+        send("layout", { items: [], detectedLanguage });
+        layoutSent = true;
+        for (const obj of arr) {
+          if (obj && typeof obj.name === "string" && obj.name.trim()) {
+            const id = nextId++;
+            send("item", { id, item: normalize(obj, id) });
+          }
+        }
+      } catch {
+        send("layout", { items: [], detectedLanguage });
+      }
     }
 
-    const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
-    const detectedLanguage = parsed.detectedLanguage ?? menuLanguage;
+    void buildCitationChains; // citations now best-effort and skipped in the hot path
 
-    const items: AnalyzedItem[] = rawItems
-      .filter((it) => it && typeof it.name === "string" && it.name.trim().length > 0)
-      .map((it, i) => {
-        const box = it.box ?? it.boundingBox ?? it.nameBox;
-        return {
-          name: it.name as string,
-          translatedName:
-            typeof it.translatedName === "string" && it.translatedName.trim()
-              ? it.translatedName
-              : (it.name as string),
-          description: typeof it.description === "string" ? it.description : "",
-          safetyLevel:
-            it.safetyLevel === "danger" ||
-            it.safetyLevel === "warning" ||
-            it.safetyLevel === "safe"
-              ? it.safetyLevel
-              : "warning",
-          conflictingRestrictions: Array.isArray(it.conflictingRestrictions)
-            ? it.conflictingRestrictions.filter(
-                (s): s is string => typeof s === "string",
-              )
-            : [],
-          allergenFlags: Array.isArray(it.allergenFlags)
-            ? it.allergenFlags.filter(
-                (f): f is AllergenFlag =>
-                  !!f && typeof f.name === "string" && typeof f.severity === "string",
-              )
-            : [],
-          boundingBox: box,
-          nameBox: box,
-          // Citations are best-effort; resolved below in a single batch.
-          citations: [],
-          // attach id externally
-          id: i,
-        } as AnalyzedItem & { id: number };
-      });
-
-    // Emit layout placeholders so the UI can render pins immediately, then
-    // emit each fully-analyzed item. (Same client wire format as before — no
-    // frontend changes required.)
-    send("layout", {
-      items: items.map((it, i) => ({
-        id: i,
-        name: it.name,
-        boundingBox: it.boundingBox,
-        nameBox: it.nameBox,
-      })),
-      detectedLanguage,
-    });
-
-    if (items.length === 0) {
-      send("done", { total: 0, completed: 0 });
-      return finish();
-    }
-
-    // Best-effort citation chains — runs once over all items, not per-item.
-    let citationsByIndex: CitationChain[][] = items.map(() => []);
-    try {
-      const allergenSlugs = restrictionsToAllergenSlugs(restrictions);
-      citationsByIndex = await Promise.all(
-        items.map((it) => buildCitationChains([it.name], allergenSlugs).catch(() => [])),
-      );
-    } catch {
-      /* best-effort, ignore */
-    }
-
-    items.forEach((it, i) => {
-      const out: AnalyzedItem = { ...it, citations: citationsByIndex[i] ?? [] };
-      send("item", { id: i, item: out });
-    });
-    send("progress", { completed: items.length, failed: 0, total: items.length });
-    send("done", { total: items.length, completed: items.length, failed: 0 });
+    send("progress", { completed: nextId, failed: 0, total: nextId });
+    send("done", { total: nextId, completed: nextId, failed: 0 });
     finish();
   } catch (err) {
     console.error("Menu analysis error:", err);

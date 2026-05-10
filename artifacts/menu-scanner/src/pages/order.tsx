@@ -1,25 +1,57 @@
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useRef, useState, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useProfile, useCart, useExtraInstructions, useChatThread } from "@/context/store-context";
 import { useOrderingInstructionsStream } from "@/hooks/use-ordering-instructions-stream";
+import { useSendChatMessage } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, ArrowLeftRight, Volume2, Loader2, RefreshCw, CheckCircle2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  ArrowLeft,
+  Play,
+  Loader2,
+  MessageCircle,
+  Send,
+  ShieldCheck,
+  Volume2,
+  RefreshCw,
+  CheckCircle2,
+} from "lucide-react";
 
 export default function OrderPage() {
   const [, setLocation] = useLocation();
   const { profile } = useProfile();
   const { cartItems, menuLanguage, clearCart } = useCart();
   const { extraInstructions } = useExtraInstructions();
-  const { clearThread } = useChatThread();
+  const { threadId, setThreadId, clearThread } = useChatThread();
 
   const ordering = useOrderingInstructionsStream();
+  const chat = useSendChatMessage();
+
+  const orderedInstructions = useMemo(() => {
+    return Array.from(ordering.state.instructions.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([, v]) => v);
+  }, [ordering.state.instructions]);
+
+  const isStreaming =
+    ordering.state.status === "starting" || ordering.state.status === "streaming";
+
+  const [chatMessage, setChatMessage] = useState("");
+  const [messages, setMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [ttsLoading, setTtsLoading] = useState(false);
   const startedRef = useRef(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // Bounce back if there's nothing to order.
   useEffect(() => {
     if (cartItems.length === 0) setLocation("/cart");
   }, [cartItems.length, setLocation]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, chat.isPending]);
 
   const startStream = useCallback(() => {
     if (!profile || !menuLanguage || cartItems.length === 0) return;
@@ -41,27 +73,56 @@ export default function OrderPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [profile, menuLanguage]);
 
-  const playAudio = useCallback(async (text: string) => {
-    if (!menuLanguage || ttsLoading || !text) return;
-    setTtsLoading(true);
-    try {
-      const response = await fetch("/api/tts/speak", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text, language: menuLanguage }),
-      });
-      if (!response.ok) throw new Error("TTS request failed");
-      const blob = await response.blob();
-      const url = URL.createObjectURL(blob);
-      const audio = new Audio(url);
-      audio.onended = () => URL.revokeObjectURL(url);
-      await audio.play();
-    } catch (err) {
-      console.error("TTS playback error:", err);
-    } finally {
-      setTtsLoading(false);
-    }
-  }, [menuLanguage, ttsLoading]);
+  const playAudio = useCallback(
+    async (text: string) => {
+      if (!menuLanguage || ttsLoading || !text) return;
+      setTtsLoading(true);
+      try {
+        const response = await fetch("/api/tts/speak", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text, language: menuLanguage }),
+        });
+        if (!response.ok) throw new Error("TTS request failed");
+        const blob = await response.blob();
+        const url = URL.createObjectURL(blob);
+        const audio = new Audio(url);
+        audio.onended = () => URL.revokeObjectURL(url);
+        await audio.play();
+      } catch (err) {
+        console.error("TTS playback error:", err);
+      } finally {
+        setTtsLoading(false);
+      }
+    },
+    [menuLanguage, ttsLoading],
+  );
+
+  const sendChat = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatMessage.trim() || !profile) return;
+    const userMsg = chatMessage.trim();
+    setMessages((prev) => [...prev, { role: "user", content: userMsg }]);
+    setChatMessage("");
+    const orderingPhrases = orderedInstructions.map((i) => i.phrase);
+    chat.mutate(
+      {
+        data: {
+          message: userMsg,
+          threadId: threadId ?? null,
+          restrictions: profile.restrictions,
+          cartItems: cartItems.map((i) => i.name),
+          orderingPhrases,
+        },
+      },
+      {
+        onSuccess: (data) => {
+          setMessages((prev) => [...prev, { role: "assistant", content: data.reply }]);
+          setThreadId(data.threadId);
+        },
+      },
+    );
+  };
 
   const handleFinishOrder = () => {
     ordering.reset();
@@ -70,19 +131,9 @@ export default function OrderPage() {
     setLocation("/camera");
   };
 
-  const sourceLabel = profile?.nativeLanguage || "English";
-  const targetLabel = menuLanguage || "Menu";
-  const phrase = ordering.state.fullOrderPhrase;
-  const isLoading =
-    ordering.state.status === "starting" ||
-    (ordering.state.status === "streaming" && !phrase);
-  const hasError =
-    (ordering.state.status === "error" && !phrase) || !!ordering.state.fullOrderError;
-
   return (
-    <div className="min-h-[100dvh] bg-background flex flex-col max-w-md mx-auto w-full relative">
-      {/* Header */}
-      <header className="p-4 flex items-center gap-3">
+    <div className="min-h-[100dvh] bg-background flex flex-col max-w-md mx-auto w-full pb-28">
+      <header className="p-4 flex items-center gap-3 sticky top-0 z-10 bg-background/95 backdrop-blur">
         <button
           type="button"
           onClick={() => setLocation("/cart")}
@@ -92,82 +143,237 @@ export default function OrderPage() {
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold">Your Order</h1>
+          <p className="text-sm text-muted-foreground">
+            {cartItems.length} item{cartItems.length !== 1 ? "s" : ""}
+          </p>
+        </div>
       </header>
 
-      {/* Language pill (read-only display) */}
-      <div className="px-4">
-        <div
-          className="mx-auto flex items-center justify-center gap-3 rounded-full bg-white border-2 border-primary/70 shadow-sm h-11 px-5 max-w-xs"
-          data-testid="order-language-pill"
-        >
-          <span className="text-sm font-semibold text-foreground" data-testid="text-source-language">{sourceLabel}</span>
-          <ArrowLeftRight className="w-4 h-4 text-primary shrink-0" aria-hidden />
-          <span className="text-sm font-semibold text-foreground" data-testid="text-target-language">{targetLabel}</span>
-        </div>
-      </div>
-
-      {/* Translated phrase card */}
-      <div className="flex-1 px-4 mt-4 pb-40">
-        <div
-          className="w-full min-h-[60dvh] border-2 border-foreground/80 rounded-3xl p-6 flex items-start justify-center bg-card"
-          data-testid="order-phrase-card"
-        >
-          {isLoading && (
-            <div className="flex flex-col items-center justify-center w-full py-16 gap-3 text-muted-foreground">
-              <Loader2 className="w-6 h-6 animate-spin" />
-              <span className="text-sm">Translating your order…</span>
+      <div className="flex-1 overflow-y-auto">
+        <div className="p-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Full order phrase card */}
+          <div className="p-5 bg-primary/10 border border-primary/20 rounded-2xl">
+            <div className="flex items-center gap-2 text-primary font-bold mb-3">
+              <ShieldCheck className="w-5 h-5" />
+              <span>Show this to the waiter</span>
+              {isStreaming && !ordering.state.fullOrderPhrase && (
+                <Loader2 className="w-4 h-4 animate-spin ml-auto" />
+              )}
             </div>
-          )}
-
-          {!isLoading && phrase && (
-            <p
-              className="text-2xl font-medium leading-snug text-center w-full whitespace-pre-wrap"
-              data-testid="text-full-order-phrase"
-            >
-              {phrase}
-            </p>
-          )}
-
-          {!isLoading && !phrase && hasError && (
-            <div className="flex flex-col items-center justify-center w-full py-16 gap-4 text-center">
+            {ordering.state.fullOrderPhrase ? (
+              <>
+                <p className="text-xl font-medium leading-snug" data-testid="text-full-order-phrase">
+                  {ordering.state.fullOrderPhrase}
+                </p>
+                <Button
+                  variant="outline"
+                  className="mt-4 w-full border-primary/30 hover:bg-primary/5 text-primary"
+                  onClick={() => playAudio(ordering.state.fullOrderPhrase)}
+                  disabled={ttsLoading}
+                  data-testid="button-play-full-phrase"
+                >
+                  {ttsLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Volume2 className="w-4 h-4 mr-2" />
+                  )}
+                  Play Audio
+                </Button>
+              </>
+            ) : ordering.state.fullOrderError ? (
               <p className="text-sm text-destructive">
-                {ordering.state.fullOrderError || ordering.state.error || "Couldn't generate the order phrase."}
+                Couldn't compose the combined phrase. {ordering.state.fullOrderError}
               </p>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => { startedRef.current = true; startStream(); }}
-                data-testid="button-retry-order"
-              >
-                <RefreshCw className="w-4 h-4 mr-1" /> Retry
-              </Button>
+            ) : (
+              <div className="space-y-2">
+                <div className="h-6 bg-primary/20 rounded animate-pulse" />
+                <div className="h-6 bg-primary/15 rounded animate-pulse w-4/5" />
+              </div>
+            )}
+          </div>
+
+          {/* Per-item breakdown */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between px-1">
+              <h3 className="font-bold text-lg">Item Breakdown</h3>
+              {isStreaming && (
+                <span
+                  className="text-xs text-muted-foreground flex items-center gap-1"
+                  data-testid="text-translation-progress"
+                >
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  {ordering.state.instructions.size} of {ordering.state.total} translated
+                </span>
+              )}
             </div>
-          )}
+
+            {ordering.state.status === "error" && ordering.state.error && (
+              <div
+                className="p-3 border border-destructive/30 bg-destructive/10 rounded-xl flex items-center gap-3"
+                data-testid="ordering-stream-error"
+              >
+                <span className="text-sm text-destructive flex-1">{ordering.state.error}</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    startedRef.current = true;
+                    startStream();
+                  }}
+                  data-testid="button-retry-ordering"
+                >
+                  <RefreshCw className="w-4 h-4 mr-1" /> Retry
+                </Button>
+              </div>
+            )}
+
+            {ordering.state.snapshotItems.map((snapshotName, idx) => {
+              const inst = ordering.state.instructions.get(idx);
+              const failure = ordering.state.itemErrors.get(idx);
+              return (
+                <div
+                  key={idx}
+                  className="p-4 border rounded-xl bg-card space-y-3"
+                  data-testid={`instruction-item-${idx}`}
+                >
+                  <p className="font-bold text-sm text-muted-foreground uppercase tracking-wider">
+                    {inst?.item ?? snapshotName}
+                  </p>
+                  {inst ? (
+                    <>
+                      <p className="text-lg font-medium">{inst.phrase}</p>
+                      <div className="flex items-center justify-between pt-2 border-t border-dashed">
+                        <p className="text-sm text-muted-foreground italic">"{inst.pronunciation}"</p>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 text-primary"
+                          onClick={() => playAudio(inst.phrase)}
+                          data-testid={`button-play-phrase-${idx}`}
+                        >
+                          <Play className="w-4 h-4 fill-current" />
+                        </Button>
+                      </div>
+                    </>
+                  ) : failure ? (
+                    <div className="flex items-center gap-2 text-sm text-destructive">
+                      <RefreshCw className="w-4 h-4" />
+                      <span>Couldn't translate this item. {failure.message}</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-2" data-testid={`instruction-item-${idx}-loading`}>
+                      <div className="h-5 bg-muted rounded animate-pulse" />
+                      <div className="h-4 bg-muted rounded animate-pulse w-3/5" />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Chat assistant */}
+          <div className="mt-8 border rounded-2xl overflow-hidden bg-card flex flex-col h-[400px]">
+            <div className="p-3 border-b bg-muted/50 flex items-center gap-2">
+              <MessageCircle className="w-5 h-5 text-primary" />
+              <h3 className="font-bold flex-1">Order Assistant</h3>
+              {threadId && (
+                <button
+                  onClick={() => {
+                    clearThread();
+                    setMessages([]);
+                  }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                  data-testid="button-clear-thread"
+                >
+                  New chat
+                </button>
+              )}
+            </div>
+
+            <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+              <div className="flex gap-2">
+                <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                </div>
+                <div className="bg-muted p-3 rounded-2xl rounded-tl-sm text-sm">
+                  Need help tweaking this order? Ask me how to request sauce on the side or
+                  double-check an ingredient.
+                </div>
+              </div>
+
+              {messages.map((msg, i) => (
+                <div
+                  key={i}
+                  className={`flex gap-2 ${msg.role === "user" ? "flex-row-reverse" : ""}`}
+                  data-testid={`chat-message-${i}`}
+                >
+                  {msg.role === "assistant" && (
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                      <MessageCircle className="w-4 h-4 text-primary" />
+                    </div>
+                  )}
+                  <div
+                    className={`p-3 rounded-2xl text-sm max-w-[85%] ${
+                      msg.role === "user"
+                        ? "bg-primary text-primary-foreground rounded-tr-sm"
+                        : "bg-muted rounded-tl-sm"
+                    }`}
+                  >
+                    {msg.content}
+                  </div>
+                </div>
+              ))}
+
+              {chat.isPending && (
+                <div className="flex gap-2">
+                  <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  </div>
+                  <div className="bg-muted p-3 rounded-2xl rounded-tl-sm text-sm flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce" />
+                    <span
+                      className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.2s" }}
+                    />
+                    <span
+                      className="w-1.5 h-1.5 bg-muted-foreground/50 rounded-full animate-bounce"
+                      style={{ animationDelay: "0.4s" }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={sendChat} className="p-2 border-t bg-background flex gap-2">
+              <Input
+                value={chatMessage}
+                onChange={(e) => setChatMessage(e.target.value)}
+                placeholder="Ask a question..."
+                className="flex-1 rounded-full border-muted-foreground/20 focus-visible:ring-primary h-10"
+                disabled={chat.isPending}
+                data-testid="input-chat-message"
+              />
+              <Button
+                type="submit"
+                size="icon"
+                className="rounded-full shrink-0 h-10 w-10"
+                disabled={!chatMessage.trim() || chat.isPending}
+                data-testid="button-send-chat"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </form>
+          </div>
         </div>
       </div>
-
-      {/* Floating speaker button */}
-      <button
-        type="button"
-        onClick={() => playAudio(phrase)}
-        disabled={!phrase || ttsLoading}
-        className="fixed bottom-24 left-1/2 -translate-x-1/2 z-20 w-14 h-14 rounded-full bg-primary shadow-lg flex items-center justify-center active:scale-95 transition-all disabled:opacity-50"
-        data-testid="button-play-full-phrase"
-        aria-label="Play audio"
-      >
-        {ttsLoading ? (
-          <Loader2 className="w-6 h-6 text-primary-foreground animate-spin" />
-        ) : (
-          <Volume2 className="w-6 h-6 text-primary-foreground" />
-        )}
-      </button>
 
       {/* Finish order */}
       <div className="fixed bottom-0 left-0 right-0 z-10 max-w-md mx-auto p-4 bg-gradient-to-t from-background via-background to-transparent pt-8">
         <Button
           size="lg"
-          variant="outline"
-          className="w-full h-12 rounded-xl border-foreground/30"
+          className="w-full h-12 rounded-xl"
           onClick={handleFinishOrder}
           data-testid="button-finish-order"
         >

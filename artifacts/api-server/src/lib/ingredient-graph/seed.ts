@@ -332,6 +332,27 @@ export async function seedKnowledgeGraph(opts: { skipExternal?: boolean } = {}):
  */
 export async function bootstrapKnowledgeGraph(): Promise<void> {
   try {
+    // Defensive pre-flight: skip seeding entirely if the schema hasn't been
+    // applied yet (drizzle push not run, missing pgvector extension, etc.).
+    // The rest of the API does not require the knowledge graph in its hot
+    // path, so it's safe to no-op here and let the operator run db push.
+    const readyRes = await db.execute(sql`
+      select (
+        exists (select 1 from pg_extension where extname = 'vector')
+        and to_regclass('public.ingredients') is not null
+      ) as ready
+    `);
+    const readyRow = (readyRes as unknown as { rows?: Array<{ ready: boolean }> })
+      .rows?.[0] ?? (readyRes as unknown as Array<{ ready: boolean }>)[0];
+    if (!readyRow?.ready) {
+      console.warn(
+        "[knowledge-graph] schema not ready (missing pgvector extension or " +
+          "ingredients table) — skipping bootstrap. Run `pnpm --filter " +
+          "@workspace/db run push` after enabling pgvector to seed.",
+      );
+      return;
+    }
+
     const [{ count }] = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(ingredientsTable);
@@ -348,8 +369,17 @@ export async function bootstrapKnowledgeGraph(): Promise<void> {
         `${result.usdaAttached} USDA attachments)`,
     );
   } catch (err) {
-    // Don't crash the server if seeding fails — log and continue with whatever
-    // data is present so the rest of the API still works.
-    console.error("[knowledge-graph] bootstrap failed:", err);
+    // Don't crash the server if seeding fails — log a concise warning and
+    // continue. Recognized schema-setup errors are downgraded so they don't
+    // look like a fatal server bug.
+    const msg = err instanceof Error ? err.message : String(err);
+    const isSchemaSetup =
+      /relation .* does not exist/i.test(msg) ||
+      /type "vector" does not exist/i.test(msg);
+    if (isSchemaSetup) {
+      console.warn(`[knowledge-graph] bootstrap skipped: ${msg}`);
+    } else {
+      console.error("[knowledge-graph] bootstrap failed:", err);
+    }
   }
 }

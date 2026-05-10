@@ -214,20 +214,30 @@ export default function CameraPage() {
   } = analyze.state;
 
   // Merge layout placeholders with analyzed item data so the UI shows shimmering
-  // pins immediately and fills them in as item events arrive.
+  // pins immediately and fills them in as item events arrive. The single-pass
+  // server emits an empty layout up front and then streams full items, so we
+  // also include item ids that have no matching placeholder.
   const mergedItems = useMemo(() => {
-    return layout.map((placeholder) => {
-      const analyzed = itemsMap.get(placeholder.id);
-      const failure = itemErrors.get(placeholder.id) ?? null;
-      return {
-        id: placeholder.id,
-        boundingBox: placeholder.boundingBox,
-        nameBox: placeholder.nameBox,
-        analyzed: analyzed ?? null,
-        failure,
-        originalName: placeholder.name,
-      };
-    });
+    const ids = new Set<number>();
+    for (const p of layout) ids.add(p.id);
+    for (const id of itemsMap.keys()) ids.add(id);
+    for (const id of itemErrors.keys()) ids.add(id);
+    const placeholderById = new Map(layout.map(p => [p.id, p] as const));
+    return Array.from(ids)
+      .sort((a, b) => a - b)
+      .map((id) => {
+        const placeholder = placeholderById.get(id);
+        const analyzed = itemsMap.get(id) ?? null;
+        const failure = itemErrors.get(id) ?? null;
+        return {
+          id,
+          boundingBox: placeholder?.boundingBox ?? analyzed?.boundingBox,
+          nameBox: placeholder?.nameBox ?? analyzed?.nameBox,
+          analyzed,
+          failure,
+          originalName: placeholder?.name ?? analyzed?.name ?? "",
+        };
+      });
   }, [layout, itemsMap, itemErrors]);
 
   const overlayItems = mergedItems.filter(i => i.boundingBox);
@@ -240,7 +250,9 @@ export default function CameraPage() {
   };
 
   const isWorking = status === "starting" || status === "layout" || status === "analyzing";
-  const showInitialOverlay = status === "starting" || (status === "layout" && layout.length === 0);
+  const showInitialOverlay =
+    status === "starting" ||
+    ((status === "layout" || status === "analyzing") && mergedItems.length === 0);
 
   return (
     <div className="min-h-[100dvh] pb-20 bg-background flex flex-col max-w-md mx-auto w-full">
@@ -423,7 +435,7 @@ export default function CameraPage() {
               </div>
             )}
 
-            {status === "done" && layout.length === 0 && (
+            {status === "done" && mergedItems.length === 0 && (
               <div className="p-4 rounded-xl bg-muted text-muted-foreground text-sm text-center">
                 No menu items were detected. Try a clearer photo.
               </div>

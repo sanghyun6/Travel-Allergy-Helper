@@ -88,9 +88,14 @@ router.post("/menu/analyze", async (req, res) => {
 
   const abortController = new AbortController();
   let clientGone = false;
-  req.on("close", () => {
-    clientGone = true;
-    abortController.abort();
+  // Use res.on('close') — req.on('close') fires as soon as Express finishes
+  // consuming the request body, which would abort the upstream fetch instantly.
+  // res 'close' fires only when the response/socket is actually torn down.
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      clientGone = true;
+      abortController.abort();
+    }
   });
 
   const send = (event: string, data: unknown) => {

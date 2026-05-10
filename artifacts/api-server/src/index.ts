@@ -1,6 +1,12 @@
+import dns from "node:dns";
 import app from "./app";
 import { logger } from "./lib/logger";
 import { bootstrapKnowledgeGraph } from "./lib/ingredient-graph/seed";
+
+// Force IPv4 for outbound HTTP — Replit's container does not have working IPv6
+// connectivity to many external hosts, which causes node fetch to hang on AAAA
+// records that never connect.
+dns.setDefaultResultOrder("ipv4first");
 
 const rawPort = process.env["PORT"];
 

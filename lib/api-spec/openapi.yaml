@@ -174,7 +174,15 @@ paths:
     post:
       operationId: analyzeMenu
       tags: [menu]
-      summary: Analyze a menu photo using Gemini vision
+      summary: Analyze a menu photo using Gemini vision (SSE stream)
+      description: |
+        Streams menu analysis as Server-Sent Events. Event types:
+        - `layout`: initial detected items with bounding boxes (placeholders).
+        - `item`: a single fully analyzed item (translation + safety verdict).
+        - `item_error`: a single item failed to analyze; other items keep going.
+        - `progress`: { completed, failed, total }.
+        - `done`: stream finished (after all items have settled).
+        - `error`: terminal stream-level error.
       requestBody:
         required: true
         content:
@@ -183,11 +191,9 @@ paths:
               $ref: "#/components/schemas/MenuAnalysisInput"
       responses:
         "200":
-          description: Menu analysis results
+          description: SSE stream of analysis events
           content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MenuAnalysisResult"
+            text/event-stream: {}
 
   /menu/ordering-instructions:
     post:
@@ -361,6 +367,9 @@ components:
       properties:
         imageBase64:
           type: string
+        mimeType:
+          type: string
+          default: image/jpeg
         menuLanguage:
           type: string
         restrictions:
@@ -371,6 +380,24 @@ components:
         - imageBase64
         - menuLanguage
         - restrictions
+
+    MenuItemBoundingBox:
+      type: object
+      description: Normalized 0–1000 bounding box (0,0 top-left → 1000,1000 bottom-right).
+      properties:
+        ymin:
+          type: number
+        xmin:
+          type: number
+        ymax:
+          type: number
+        xmax:
+          type: number
+      required:
+        - ymin
+        - xmin
+        - ymax
+        - xmax
 
     MenuAllergenFlag:
       type: object
@@ -402,6 +429,10 @@ components:
             $ref: "#/components/schemas/MenuAllergenFlag"
         translatedName:
           type: string
+        boundingBox:
+          $ref: "#/components/schemas/MenuItemBoundingBox"
+        nameBox:
+          $ref: "#/components/schemas/MenuItemBoundingBox"
       required:
         - name
         - description

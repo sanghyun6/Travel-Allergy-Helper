@@ -1,6 +1,6 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { useProfile, useCart, type MenuItem } from "@/context/store-context";
-import { useAnalyzeMenu } from "@workspace/api-client-react";
+import { useAnalyzeMenuStream, type AnalyzedMenuItem } from "@/hooks/use-analyze-menu-stream";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -19,7 +19,8 @@ const MENU_LANGUAGES = [
   "English",
 ];
 
-type AnalyzedItem = NonNullable<ReturnType<typeof useAnalyzeMenu>["data"]>["items"][number];
+type AnyItem = AnalyzedMenuItem;
+type BBox = NonNullable<AnyItem["boundingBox"]>;
 
 function pillColors(level: string) {
   switch (level) {
@@ -37,7 +38,7 @@ function SafetyIcon({ level, className }: { level: string; className?: string })
   return null;
 }
 
-function cropStyle(bbox: NonNullable<AnalyzedItem["boundingBox"]>, imageDataUrl: string) {
+function cropStyle(bbox: BBox, imageDataUrl: string) {
   const w = Math.max(1, bbox.xmax - bbox.xmin);
   const h = Math.max(1, bbox.ymax - bbox.ymin);
   const restW = 1000 - w;
@@ -59,14 +60,15 @@ export default function CameraPage() {
   const [menuLanguage, setMenuLanguage] = useState("Auto-detect");
   const [cameraMode, setCameraMode] = useState<"idle" | "live">("idle");
   const [facingMode, setFacingMode] = useState<"environment" | "user">("environment");
-  const [selectedItem, setSelectedItem] = useState<AnalyzedItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<AnyItem | null>(null);
+  const lastRequestRef = useRef<{ dataUrl: string } | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const analyzeMenu = useAnalyzeMenu();
+  const analyze = useAnalyzeMenuStream();
 
   const stopStream = useCallback(() => {
     if (streamRef.current) {
@@ -108,6 +110,21 @@ export default function CameraPage() {
     }
   }, [facingMode, stopStream, toast]);
 
+  const runAnalysis = useCallback((dataUrl: string) => {
+    setImagePreview(dataUrl);
+    setSelectedItem(null);
+    lastRequestRef.current = { dataUrl };
+    const base64Data = dataUrl.split(",")[1];
+    const detectedMime = dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
+    const lang = menuLanguage === "Auto-detect" ? "Unknown" : menuLanguage;
+    analyze.start({
+      imageBase64: base64Data,
+      mimeType: detectedMime,
+      menuLanguage: lang,
+      restrictions: profile?.restrictions || [],
+    });
+  }, [analyze, menuLanguage, profile?.restrictions]);
+
   const capturePhoto = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) return;
     const video = videoRef.current;
@@ -119,7 +136,7 @@ export default function CameraPage() {
     stopStream();
     setCameraMode("idle");
     runAnalysis(dataUrl);
-  }, [stopStream]);
+  }, [stopStream, runAnalysis]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -134,29 +151,20 @@ export default function CameraPage() {
     reader.readAsDataURL(file);
   };
 
-  const runAnalysis = (dataUrl: string) => {
-    setImagePreview(dataUrl);
-    setSelectedItem(null);
-    const base64Data = dataUrl.split(",")[1];
-    const detectedMime = dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
-    const lang = menuLanguage === "Auto-detect" ? "Unknown" : menuLanguage;
-    analyzeMenu.mutate({
-      data: {
-        imageBase64: base64Data,
-        mimeType: detectedMime,
-        menuLanguage: lang,
-        restrictions: profile?.restrictions || [],
-      },
-    });
-  };
-
   const reset = () => {
     setImagePreview(null);
     setSelectedItem(null);
-    analyzeMenu.reset();
+    analyze.reset();
+    lastRequestRef.current = null;
     stopStream();
     setCameraMode("idle");
     if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const retry = () => {
+    if (lastRequestRef.current) {
+      runAnalysis(lastRequestRef.current.dataUrl);
+    }
   };
 
   const userRestrictions = new Set((profile?.restrictions || []).map(r => r.toLowerCase()));
@@ -168,16 +176,39 @@ export default function CameraPage() {
     return false;
   };
 
-  const items = analyzeMenu.data?.items ?? [];
-  const detectedLanguage = analyzeMenu.data?.detectedLanguage ?? "";
-  const overlayItems = items.filter(i => i.boundingBox);
-  const noBoxItems  = items.filter(i => !i.boundingBox);
-  const isAddedFn = (item: AnalyzedItem) => cartItems.some(c => c.name === item.name);
+  const {
+    layout, items: itemsMap, itemErrors, status,
+    completed, failed, total, error, detectedLanguage,
+  } = analyze.state;
 
-  const handleAdd = (item: AnalyzedItem) => {
+  // Merge layout placeholders with analyzed item data so the UI shows shimmering
+  // pins immediately and fills them in as item events arrive.
+  const mergedItems = useMemo(() => {
+    return layout.map((placeholder) => {
+      const analyzed = itemsMap.get(placeholder.id);
+      const failure = itemErrors.get(placeholder.id) ?? null;
+      return {
+        id: placeholder.id,
+        boundingBox: placeholder.boundingBox,
+        nameBox: placeholder.nameBox,
+        analyzed: analyzed ?? null,
+        failure,
+        originalName: placeholder.name,
+      };
+    });
+  }, [layout, itemsMap, itemErrors]);
+
+  const overlayItems = mergedItems.filter(i => i.boundingBox);
+  const noBoxItems = mergedItems.filter(i => !i.boundingBox);
+  const isAddedFn = (item: AnyItem) => cartItems.some(c => c.name === item.name);
+
+  const handleAdd = (item: AnyItem) => {
     addToCart(item as MenuItem, detectedLanguage);
     toast({ title: "Added to order", description: `${item.translatedName} added.` });
   };
+
+  const isWorking = status === "starting" || status === "layout" || status === "analyzing";
+  const showInitialOverlay = status === "starting" || (status === "layout" && layout.length === 0);
 
   return (
     <div className="min-h-[100dvh] pb-20 bg-background flex flex-col max-w-md mx-auto w-full">
@@ -258,7 +289,6 @@ export default function CameraPage() {
 
             {/* ── Annotated photo ── */}
             <div className="relative w-full rounded-2xl overflow-hidden border shadow-sm bg-black">
-              {/* The photo — natural aspect ratio, no letterbox */}
               <img
                 src={imagePreview}
                 alt="Menu"
@@ -276,80 +306,157 @@ export default function CameraPage() {
                 Retake
               </Button>
 
-              {/* Scanning overlay */}
-              {analyzeMenu.isPending && (
+              {/* Initial scanning overlay (only while we have no layout yet) */}
+              {showInitialOverlay && (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 z-10 gap-3">
                   <Loader2 className="w-8 h-8 text-white animate-spin" />
                   <p className="text-white text-sm font-medium text-center px-4">
-                    Reading menu and checking ingredients…
+                    Reading menu…
                   </p>
                 </div>
               )}
 
-              {/* Item pins */}
-              {analyzeMenu.data && overlayItems.map((item, idx) => {
-                const bbox = item.boundingBox!;
-                // Use nameBox (tight around foreign text) for pin placement if available,
-                // otherwise fall back to top of full bounding box
-                const pinBox = item.nameBox ?? bbox;
+              {/* Item pins (placeholders shimmer until analyzed; failed items
+                  show a muted "couldn't analyze" pin without blocking others) */}
+              {overlayItems.map((entry, idx) => {
+                const bbox = entry.boundingBox!;
+                const pinBox = entry.nameBox ?? bbox;
                 const cx = ((pinBox.xmin + pinBox.xmax) / 2) / 10;
                 const cy = ((pinBox.ymin + pinBox.ymax) / 2) / 10;
-                const isSelected = selectedItem?.name === item.name;
+                const analyzed = entry.analyzed;
+                const failure = entry.failure;
+                const isSelected = analyzed && selectedItem?.name === analyzed.name;
+                const level = analyzed?.safetyLevel ?? (failure ? "failed" : "pending");
+                const label = analyzed?.translatedName
+                  ?? (failure ? `${entry.originalName} — failed` : entry.originalName);
+                const colorClass = failure && !analyzed
+                  ? "bg-gray-500/90 text-white border-gray-300/60"
+                  : pillColors(level);
+
                 return (
                   <button
-                    key={idx}
-                    onClick={() => setSelectedItem(isSelected ? null : item)}
+                    key={entry.id}
+                    onClick={() => analyzed && setSelectedItem(isSelected ? null : analyzed)}
+                    disabled={!analyzed}
+                    title={failure?.message}
                     style={{ left: `${cx}%`, top: `${cy}%`, transform: "translate(-50%, -50%)" }}
                     className={`
                       absolute z-10 flex items-center gap-1 px-2 py-1 rounded-full border text-xs font-semibold
-                      shadow-lg backdrop-blur-sm whitespace-nowrap transition-all active:scale-95 max-w-[44%]
-                      ${pillColors(item.safetyLevel)}
+                      shadow-lg backdrop-blur-sm whitespace-nowrap transition-all max-w-[44%]
+                      ${colorClass}
+                      ${analyzed ? "active:scale-95" : failure ? "cursor-default" : "animate-pulse cursor-default"}
                       ${isSelected ? "ring-2 ring-white scale-105" : ""}
                     `}
-                    data-testid={`pin-menu-item-${idx}`}
+                    data-testid={
+                      analyzed ? `pin-menu-item-${idx}` :
+                      failure ? `pin-error-${idx}` : `pin-placeholder-${idx}`
+                    }
                   >
-                    <SafetyIcon level={item.safetyLevel} className="w-3 h-3 shrink-0" />
-                    <span className="truncate">{item.translatedName}</span>
+                    {analyzed ? (
+                      <SafetyIcon level={level} className="w-3 h-3 shrink-0" />
+                    ) : failure ? (
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                    ) : (
+                      <Loader2 className="w-3 h-3 shrink-0 animate-spin" />
+                    )}
+                    <span className="truncate">{label}</span>
                   </button>
                 );
               })}
             </div>
 
-            {analyzeMenu.isError && (
-              <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm text-center">
-                Could not analyze the menu. Please try again.
+            {/* Progress / status row */}
+            {(isWorking || status === "done") && total > 0 && (
+              <div className="flex items-center justify-between text-xs text-muted-foreground px-1">
+                <span data-testid="text-progress">
+                  {status === "done"
+                    ? `Done — ${completed} of ${total} analyzed${failed > 0 ? `, ${failed} failed` : ""}`
+                    : `${completed} of ${total} item${total === 1 ? "" : "s"} analyzed${failed > 0 ? ` (${failed} failed)` : ""}`}
+                </span>
+                {isWorking && completed + failed < total && (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                )}
+              </div>
+            )}
+
+            {status === "error" && (
+              <div className="p-4 rounded-xl bg-destructive/10 text-destructive text-sm flex flex-col gap-2">
+                <span>{error || "Could not analyze the menu."}</span>
+                <Button size="sm" variant="outline" onClick={retry} className="self-start">
+                  <RefreshCw className="w-3 h-3 mr-1" /> Retry
+                </Button>
+              </div>
+            )}
+
+            {status === "done" && layout.length === 0 && (
+              <div className="p-4 rounded-xl bg-muted text-muted-foreground text-sm text-center">
+                No menu items were detected. Try a clearer photo.
               </div>
             )}
 
             {/* Items without bounding box (fallback list) */}
-            {analyzeMenu.data && noBoxItems.length > 0 && (
+            {noBoxItems.length > 0 && (
               <div className="space-y-2">
                 <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">
                   Additional items
                 </p>
-                {noBoxItems.map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSelectedItem(item)}
-                    className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${
-                      item.safetyLevel === "danger"
-                        ? "border-red-500/40 bg-red-500/5"
-                        : item.safetyLevel === "warning"
-                        ? "border-amber-500/40 bg-amber-500/5"
-                        : "border-border bg-card"
-                    }`}
-                    data-testid={`list-menu-item-${idx}`}
-                  >
-                    <SafetyIcon level={item.safetyLevel} className={`w-4 h-4 shrink-0 ${
-                      item.safetyLevel === "danger" ? "text-red-500" :
-                      item.safetyLevel === "warning" ? "text-amber-500" : "text-green-600"
-                    }`} />
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{item.translatedName}</p>
-                      <p className="text-xs text-muted-foreground truncate">{item.name}</p>
-                    </div>
-                  </button>
-                ))}
+                {noBoxItems.map((entry, idx) => {
+                  const analyzed = entry.analyzed;
+                  const failure = entry.failure;
+                  if (!analyzed && failure) {
+                    return (
+                      <div
+                        key={entry.id}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-muted/40"
+                        data-testid={`list-item-error-${idx}`}
+                      >
+                        <AlertTriangle className="w-4 h-4 shrink-0 text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{entry.originalName}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            Couldn't analyze — {failure.message}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  if (!analyzed) {
+                    return (
+                      <div
+                        key={entry.id}
+                        className="w-full flex items-center gap-3 p-3 rounded-xl border border-border bg-card animate-pulse"
+                      >
+                        <Loader2 className="w-4 h-4 shrink-0 animate-spin text-muted-foreground" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm truncate">{entry.originalName}</p>
+                        </div>
+                      </div>
+                    );
+                  }
+                  return (
+                    <button
+                      key={entry.id}
+                      onClick={() => setSelectedItem(analyzed)}
+                      className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition-all active:scale-[0.98] ${
+                        analyzed.safetyLevel === "danger"
+                          ? "border-red-500/40 bg-red-500/5"
+                          : analyzed.safetyLevel === "warning"
+                          ? "border-amber-500/40 bg-amber-500/5"
+                          : "border-border bg-card"
+                      }`}
+                      data-testid={`list-menu-item-${idx}`}
+                    >
+                      <SafetyIcon level={analyzed.safetyLevel} className={`w-4 h-4 shrink-0 ${
+                        analyzed.safetyLevel === "danger" ? "text-red-500" :
+                        analyzed.safetyLevel === "warning" ? "text-amber-500" : "text-green-600"
+                      }`} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm truncate">{analyzed.translatedName}</p>
+                        <p className="text-xs text-muted-foreground truncate">{analyzed.name}</p>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -359,16 +466,13 @@ export default function CameraPage() {
       {/* ── Bottom sheet detail panel ── */}
       {selectedItem && (
         <>
-          {/* Scrim */}
           <div
             className="fixed inset-0 z-30 bg-black/40"
             onClick={() => setSelectedItem(null)}
           />
 
-          {/* Sheet — sits above the bottom nav (which is ~64px tall) */}
           <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-md z-40 rounded-t-3xl bg-background shadow-2xl border-t animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[75dvh]">
 
-            {/* Cropped photo strip */}
             {selectedItem.boundingBox && imagePreview && (
               <div
                 className="w-full h-36 rounded-t-3xl shrink-0"
@@ -379,7 +483,6 @@ export default function CameraPage() {
 
             <div className="overflow-y-auto overscroll-contain">
             <div className="p-5 space-y-4">
-              {/* Header */}
               <div className="flex items-start justify-between gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
@@ -400,10 +503,8 @@ export default function CameraPage() {
                 </button>
               </div>
 
-              {/* Description */}
               <p className="text-sm text-foreground/80 leading-relaxed">{selectedItem.description}</p>
 
-              {/* Allergens */}
               {(selectedItem.conflictingRestrictions.length > 0 || selectedItem.allergenFlags.length > 0) && (
                 <div className="space-y-3 bg-muted/50 p-3 rounded-2xl">
                   {selectedItem.conflictingRestrictions.length > 0 && (
@@ -431,7 +532,6 @@ export default function CameraPage() {
                 </div>
               )}
 
-              {/* Add to cart */}
               <Button
                 variant={selectedItem.safetyLevel === "danger" ? "destructive" : "default"}
                 className="w-full h-12 rounded-2xl text-base"

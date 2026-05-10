@@ -6,13 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { MenuAllergenFlag } from "./menuAllergenFlag";
-
-export interface MenuItemBoundingBox {
-  ymin: number;
-  xmin: number;
-  ymax: number;
-  xmax: number;
-}
+import type { MenuItemBoundingBox } from "./menuItemBoundingBox";
 
 export interface MenuItem {
   name: string;
@@ -22,4 +16,5 @@ export interface MenuItem {
   allergenFlags: MenuAllergenFlag[];
   translatedName: string;
   boundingBox?: MenuItemBoundingBox;
+  nameBox?: MenuItemBoundingBox;
 }

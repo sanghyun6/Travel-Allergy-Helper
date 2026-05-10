@@ -58,16 +58,19 @@ export interface MenuAnalysisInput {
   restrictions: string[];
 }
 
-export interface MenuAllergenFlag {
-  name: string;
-  severity: string;
-}
-
+/**
+ * Normalized 0–1000 bounding box (0,0 top-left → 1000,1000 bottom-right).
+ */
 export interface MenuItemBoundingBox {
   ymin: number;
   xmin: number;
   ymax: number;
   xmax: number;
+}
+
+export interface MenuAllergenFlag {
+  name: string;
+  severity: string;
 }
 
 export interface MenuItem {

@@ -29,11 +29,9 @@ import type {
   GeminiMessageInput,
   HealthStatus,
   MenuAnalysisInput,
-  MenuAnalysisResult,
   OrderingInstructionsInput,
   OrderingInstructionsResult,
   TtsInput,
-  TtsResponse,
 } from "./api.schemas";
 
 import { customFetch } from "../custom-fetch";
@@ -720,7 +718,14 @@ export const useGenerateGeminiImage = <
 };
 
 /**
- * @summary Analyze a menu photo using Gemini vision
+ * Streams menu analysis as Server-Sent Events. Event types:
+- `layout`: initial detected items with bounding boxes (placeholders).
+- `item`: a single fully analyzed item (translation + safety verdict).
+- `progress`: { completed, total }.
+- `done`: stream finished successfully.
+- `error`: terminal error.
+
+ * @summary Analyze a menu photo using Gemini vision (SSE stream)
  */
 export const getAnalyzeMenuUrl = () => {
   return `/api/menu/analyze`;
@@ -729,8 +734,8 @@ export const getAnalyzeMenuUrl = () => {
 export const analyzeMenu = async (
   menuAnalysisInput: MenuAnalysisInput,
   options?: RequestInit,
-): Promise<MenuAnalysisResult> => {
-  return customFetch<MenuAnalysisResult>(getAnalyzeMenuUrl(), {
+): Promise<unknown> => {
+  return customFetch<unknown>(getAnalyzeMenuUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
@@ -783,7 +788,7 @@ export type AnalyzeMenuMutationBody = BodyType<MenuAnalysisInput>;
 export type AnalyzeMenuMutationError = ErrorType<unknown>;
 
 /**
- * @summary Analyze a menu photo using Gemini vision
+ * @summary Analyze a menu photo using Gemini vision (SSE stream)
  */
 export const useAnalyzeMenu = <
   TError = ErrorType<unknown>,
@@ -905,8 +910,8 @@ export const getTextToSpeechUrl = () => {
 export const textToSpeech = async (
   ttsInput: TtsInput,
   options?: RequestInit,
-): Promise<TtsResponse> => {
-  return customFetch<TtsResponse>(getTextToSpeechUrl(), {
+): Promise<Blob> => {
+  return customFetch<Blob>(getTextToSpeechUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },

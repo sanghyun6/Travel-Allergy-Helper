@@ -105,48 +105,22 @@ export const GenerateGeminiImageResponse = zod.object({
 });
 
 /**
- * @summary Analyze a menu photo using Gemini vision
+ * Streams menu analysis as Server-Sent Events. Event types:
+- `layout`: initial detected items with bounding boxes (placeholders).
+- `item`: a single fully analyzed item (translation + safety verdict).
+- `progress`: { completed, total }.
+- `done`: stream finished successfully.
+- `error`: terminal error.
+
+ * @summary Analyze a menu photo using Gemini vision (SSE stream)
  */
+export const analyzeMenuBodyMimeTypeDefault = `image/jpeg`;
+
 export const AnalyzeMenuBody = zod.object({
   imageBase64: zod.string(),
-  mimeType: zod.string().optional().default("image/jpeg"),
+  mimeType: zod.string().default(analyzeMenuBodyMimeTypeDefault),
   menuLanguage: zod.string(),
   restrictions: zod.array(zod.string()),
-});
-
-export const AnalyzeMenuResponse = zod.object({
-  items: zod.array(
-    zod.object({
-      name: zod.string(),
-      description: zod.string(),
-      safetyLevel: zod.string(),
-      conflictingRestrictions: zod.array(zod.string()),
-      allergenFlags: zod.array(
-        zod.object({
-          name: zod.string(),
-          severity: zod.string(),
-        }),
-      ),
-      translatedName: zod.string(),
-      boundingBox: zod
-        .object({
-          ymin: zod.number(),
-          xmin: zod.number(),
-          ymax: zod.number(),
-          xmax: zod.number(),
-        })
-        .optional(),
-      nameBox: zod
-        .object({
-          ymin: zod.number(),
-          xmin: zod.number(),
-          ymax: zod.number(),
-          xmax: zod.number(),
-        })
-        .optional(),
-    }),
-  ),
-  detectedLanguage: zod.string(),
 });
 
 /**
@@ -176,11 +150,6 @@ export const GetOrderingInstructionsResponse = zod.object({
 export const TextToSpeechBody = zod.object({
   text: zod.string(),
   language: zod.string(),
-});
-
-export const TextToSpeechResponse = zod.object({
-  audioBase64: zod.string(),
-  mimeType: zod.string(),
 });
 
 /**

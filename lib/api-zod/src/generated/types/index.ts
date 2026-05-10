@@ -21,6 +21,7 @@ export * from "./menuAllergenFlag";
 export * from "./menuAnalysisInput";
 export * from "./menuAnalysisResult";
 export * from "./menuItem";
+export * from "./menuItemBoundingBox";
 export * from "./orderingInstruction";
 export * from "./orderingInstructionsInput";
 export * from "./orderingInstructionsResult";

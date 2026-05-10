@@ -234,6 +234,51 @@ importers:
         specifier: 3.1.0
         version: 3.1.0
 
+  artifacts/launch-video:
+    devDependencies:
+      '@replit/vite-plugin-cartographer':
+        specifier: 'catalog:'
+        version: 0.5.1
+      '@replit/vite-plugin-dev-banner':
+        specifier: 'catalog:'
+        version: 0.1.2
+      '@replit/vite-plugin-runtime-error-modal':
+        specifier: 'catalog:'
+        version: 0.0.6
+      '@tailwindcss/vite':
+        specifier: 'catalog:'
+        version: 4.2.1(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.4))
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.3.5
+      '@types/react':
+        specifier: 'catalog:'
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: 'catalog:'
+        version: 19.2.3(@types/react@19.2.14)
+      '@vitejs/plugin-react':
+        specifier: 'catalog:'
+        version: 5.1.4(vite@7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.4))
+      framer-motion:
+        specifier: 'catalog:'
+        version: 12.35.1(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      lucide-react:
+        specifier: 'catalog:'
+        version: 0.545.0(react@19.1.0)
+      react:
+        specifier: 'catalog:'
+        version: 19.1.0
+      react-dom:
+        specifier: 'catalog:'
+        version: 19.1.0(react@19.1.0)
+      tailwindcss:
+        specifier: 'catalog:'
+        version: 4.2.1
+      vite:
+        specifier: 'catalog:'
+        version: 7.3.2(@types/node@25.3.5)(jiti@2.6.1)(lightningcss@1.31.1)(terser@5.47.1)(tsx@4.21.0)(yaml@2.8.4)
+
   artifacts/menu-scanner:
     dependencies:
       '@capacitor/camera':
@@ -751,10 +796,6 @@ packages:
 
   '@babel/code-frame@7.29.0':
     resolution: {integrity: sha512-9NhCeYjq9+3uxgdtp20LSiJXJvN0FeCtNGpJxuMFZ1Kv3cWUNb6DOhJwUvcVCzKGR66cw4njwM6hrJLqgOwbcw==}
-    engines: {node: '>=6.9.0'}
-
-  '@babel/compat-data@7.29.0':
-    resolution: {integrity: sha512-T1NCJqT/j9+cn8fvkt7jtwbLBfLC/1y1c7NtCeXFRgzGTsafi68MRv8yzkYSapBnFA6L3U2VSc02ciDzoAJhJg==}
     engines: {node: '>=6.9.0'}
 
   '@babel/compat-data@7.29.3':
@@ -4828,8 +4869,6 @@ snapshots:
       js-tokens: 4.0.0
       picocolors: 1.1.1
 
-  '@babel/compat-data@7.29.0': {}
-
   '@babel/compat-data@7.29.3': {}
 
   '@babel/core@7.29.0':
@@ -4866,7 +4905,7 @@ snapshots:
 
   '@babel/helper-compilation-targets@7.28.6':
     dependencies:
-      '@babel/compat-data': 7.29.0
+      '@babel/compat-data': 7.29.3
       '@babel/helper-validator-option': 7.27.1
       browserslist: 4.28.1
       lru-cache: 5.1.1

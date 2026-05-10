@@ -12,6 +12,18 @@ uri = "file://artifacts/pitch-deck/public/impact.png"
 type = "image"
 title = "friends sharing meal abroad"
 
+[[generated]]
+id = "uG0WevWChg4pqG_6vvysV"
+uri = "file://artifacts/launch-video/public/menu-bg.png"
+type = "image"
+title = "Spanish tapas menu closeup"
+
+[[generated]]
+id = "N996NC2NgsHtDeM68pC2x"
+uri = "file://artifacts/launch-video/public/restaurant-bg.png"
+type = "image"
+title = "Atmospheric restaurant table"
+
 [[outputs]]
 id = "cE8COFiyed5jEoqy4Xn8F"
 uri = "file://.local/outputs/Travel-Allergy-Helper.pptx"

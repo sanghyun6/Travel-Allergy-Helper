@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+/* Allergy Travel Scanner — launch video brand tokens (mirrors pitch deck). */
+:root {
+  --color-primary: #0E2A2A; /* Deep teal ink */
+  --color-secondary: #6F6A60; /* Muted brown/grey */
+  --color-accent: #C0432B; /* Danger red */
+
+  --color-bg-light: #F5EFE6; /* Background cream */
+  --color-bg-dark: #0E2A2A;
+  --color-bg-muted: #E8E2D9;
+
+  --color-text-primary: #0E2A2A;
+  --color-text-secondary: #6F6A60;
+  --color-text-muted: #A09B92;
+  --color-text-inverse: #F5EFE6;
+
+  --color-success: #2F7D5B; /* Safe green */
+  --color-warning: #D97A1F; /* Caution amber */
+  --color-error: #C0432B; /* Danger red */
+
+  --font-display: 'Instrument Serif', serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-mono: monospace;
+}
+
+@theme inline {
+  --color-primary: var(--color-primary);
+  --color-secondary: var(--color-secondary);
+  --color-accent: var(--color-accent);
+  --color-bg-light: var(--color-bg-light);
+  --color-bg-dark: var(--color-bg-dark);
+  --color-bg-muted: var(--color-bg-muted);
+  --color-text-primary: var(--color-text-primary);
+  --color-text-secondary: var(--color-text-secondary);
+  --color-text-muted: var(--color-text-muted);
+  --color-text-inverse: var(--color-text-inverse);
+  --color-success: var(--color-success);
+  --color-warning: var(--color-warning);
+  --color-error: var(--color-error);
+  --font-display: var(--font-display);
+  --font-body: var(--font-body);
+  --font-mono: var(--font-mono);
+}
+
+body {
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

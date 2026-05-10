@@ -456,18 +456,6 @@ export default function CameraPage() {
             </Select>
           </div>
 
-          {restrictionCount > 0 && (
-            <button
-              type="button"
-              onClick={() => setLocation("/settings")}
-              className="h-11 px-3 rounded-full bg-white/95 backdrop-blur-md border border-white/50 shadow-md text-xs font-semibold text-foreground flex items-center gap-1.5"
-              data-testid="button-restrictions-chip"
-              aria-label={`${restrictionCount} active restriction${restrictionCount !== 1 ? "s" : ""}`}
-            >
-              <ShieldCheck className="w-3.5 h-3.5 text-primary" />
-              {restrictionCount}
-            </button>
-          )}
         </div>
       )}
 

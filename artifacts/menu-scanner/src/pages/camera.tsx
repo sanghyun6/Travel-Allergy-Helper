@@ -22,6 +22,32 @@ const MENU_LANGUAGES = [
 type AnyItem = AnalyzedMenuItem;
 type BBox = NonNullable<AnyItem["boundingBox"]>;
 
+async function downscaleDataUrl(dataUrl: string, maxEdge: number, quality: number): Promise<string> {
+  try {
+    const img = new Image();
+    img.decoding = "async";
+    img.src = dataUrl;
+    await img.decode();
+    const w = img.naturalWidth;
+    const h = img.naturalHeight;
+    if (!w || !h) return dataUrl;
+    const longest = Math.max(w, h);
+    if (longest <= maxEdge) return dataUrl;
+    const scale = maxEdge / longest;
+    const tw = Math.round(w * scale);
+    const th = Math.round(h * scale);
+    const canvas = document.createElement("canvas");
+    canvas.width = tw;
+    canvas.height = th;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return dataUrl;
+    ctx.drawImage(img, 0, 0, tw, th);
+    return canvas.toDataURL("image/jpeg", quality);
+  } catch {
+    return dataUrl;
+  }
+}
+
 function pillColors(level: string) {
   switch (level) {
     case "safe":    return "bg-green-600/90 text-white border-green-400/60";
@@ -110,12 +136,17 @@ export default function CameraPage() {
     }
   }, [facingMode, stopStream, toast]);
 
-  const runAnalysis = useCallback((dataUrl: string) => {
+  const runAnalysis = useCallback(async (dataUrl: string) => {
     setImagePreview(dataUrl);
     setSelectedItem(null);
     lastRequestRef.current = { dataUrl };
-    const base64Data = dataUrl.split(",")[1];
-    const detectedMime = dataUrl.split(";")[0].split(":")[1] || "image/jpeg";
+
+    // Downscale large photos before upload — full-res phone photos can be
+    // 4–8MB base64 which dominates total scan time. 1600px is plenty for
+    // Gemini OCR while shrinking the payload by 5–10x.
+    const sendUrl = await downscaleDataUrl(dataUrl, 1600, 0.82);
+    const base64Data = sendUrl.split(",")[1];
+    const detectedMime = sendUrl.split(";")[0].split(":")[1] || "image/jpeg";
     const lang = menuLanguage === "Auto-detect" ? "Unknown" : menuLanguage;
     analyze.start({
       imageBase64: base64Data,

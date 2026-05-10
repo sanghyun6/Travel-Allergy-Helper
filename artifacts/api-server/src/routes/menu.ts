@@ -150,7 +150,7 @@ Return ONLY valid JSON of shape:
     // with the affected item's id. We wait for ALL items to settle before
     // emitting `done` so we never close the stream while writes are still
     // in flight.
-    const CONCURRENCY = 5;
+    const CONCURRENCY = 10;
     let completed = 0;
     let failed = 0;
     let inFlight = 0;
@@ -159,26 +159,22 @@ Return ONLY valid JSON of shape:
     const analyzeOne = async (item: LayoutItem): Promise<void> => {
       if (clientGone) return;
 
-      const itemPrompt = `You are a food safety assistant for travelers with dietary restrictions.
+      const itemPrompt = `You are a food safety assistant for travelers.
 
-A specific menu item from a ${detectedLanguage} restaurant menu has been isolated. Analyze it.
-
-Original item name: "${item.name}"
+Menu item from a ${detectedLanguage} restaurant: "${item.name}"
 User dietary restrictions: ${restrictionList}
 
-Use the photo (the full menu image) for context — locate this item by its name and read any nearby description, ingredients, or notes.
-
-Return JSON:
+Based on common knowledge of this dish (no image is provided — work from the name alone), return JSON:
 {
   "translatedName": "English translation of the item name",
-  "description": "brief 1-sentence description of what the dish is",
+  "description": "brief 1-sentence description of what the dish typically is",
   "safetyLevel": "safe" | "warning" | "danger",
   "conflictingRestrictions": ["restriction1"],
   "allergenFlags": [ { "name": "Peanuts", "severity": "high" | "medium" | "low" } ]
 }
 
 Safety levels:
-- "danger": directly conflicts with the user's restrictions OR contains major allergens (peanuts, tree nuts, shellfish, eggs, dairy, gluten, soy)
+- "danger": directly conflicts with the user's restrictions OR almost certainly contains a major allergen (peanuts, tree nuts, shellfish, eggs, dairy, gluten, soy)
 - "warning": may contain traces or unclear ingredients
 - "safe": appears safe for this user
 
@@ -188,19 +184,16 @@ Return ONLY valid JSON, no markdown.`;
 
       try {
         const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash",
+          model: "gemini-2.5-flash-lite",
           contents: [
             {
               role: "user",
-              parts: [
-                { inlineData: { mimeType, data: imageBase64 } },
-                { text: itemPrompt },
-              ],
+              parts: [{ text: itemPrompt }],
             },
           ],
           config: {
             responseMimeType: "application/json",
-            maxOutputTokens: 1024,
+            maxOutputTokens: 512,
             abortSignal: abortController.signal,
           },
         });

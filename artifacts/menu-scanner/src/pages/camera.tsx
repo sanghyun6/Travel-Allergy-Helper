@@ -439,7 +439,7 @@ export default function CameraPage() {
   const restrictionCount = profile?.restrictions.length || 0;
 
   return (
-    <div className="min-h-[100dvh] bg-black flex flex-col max-w-md mx-auto w-full relative overflow-hidden">
+    <div className="min-h-screen-safe bg-black flex flex-col max-w-md mx-auto w-full relative overflow-hidden">
       {/* ── Live camera surface (full-bleed when no preview) ── */}
       {showCameraSurface && (
         <div className="absolute inset-0 z-0 bg-black">
@@ -480,7 +480,7 @@ export default function CameraPage() {
 
       {/* ── Top bar: language translation pill ── */}
       {showCameraSurface && (
-        <div className="relative z-10 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-2 flex items-center gap-2">
+        <div className="relative z-10 px-4 pt-4 pb-2 flex items-center gap-2">
           <input
             type="file"
             accept="image/*"
@@ -539,7 +539,7 @@ export default function CameraPage() {
           <button
             type="button"
             onClick={reset}
-            className="fixed top-4 left-4 z-30 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center active:scale-95 transition-all"
+            className="fixed left-4 top-[calc(env(safe-area-inset-top)+1rem)] z-30 w-11 h-11 rounded-full bg-white shadow-lg flex items-center justify-center active:scale-95 transition-all"
             data-testid="button-back-to-camera"
             aria-label="Back to camera"
           >
@@ -737,7 +737,7 @@ export default function CameraPage() {
           <button
             type="button"
             onClick={() => setLocation("/cart")}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-30 h-12 px-6 rounded-full bg-primary text-white shadow-2xl active:scale-95 transition-all flex items-center gap-2 font-semibold"
+            className="fixed bottom-[calc(env(safe-area-inset-bottom)+1.5rem)] left-1/2 -translate-x-1/2 z-30 h-12 px-6 rounded-full bg-primary text-white shadow-2xl active:scale-95 transition-all flex items-center gap-2 font-semibold"
             data-testid="button-go-to-cart"
           >
             <ShoppingBag className="w-5 h-5" strokeWidth={2.25} />
@@ -754,7 +754,7 @@ export default function CameraPage() {
       {/* ── Bottom shutter bar (idle/live mode only) ── */}
       {showCameraSurface && (
         <div className="relative z-10 mt-auto">
-          <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 flex items-end justify-between pl-[72px] pr-[72px] pt-[36px] pb-[max(24px,env(safe-area-inset-bottom))]">
+          <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 flex items-end justify-between pl-[72px] pr-[72px] pt-[36px] pb-6">
             <button
               type="button"
               onClick={() => setLocation("/cart")}
@@ -802,7 +802,7 @@ export default function CameraPage() {
             onClick={() => setSelectedItem(null)}
           />
 
-          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-md z-40 rounded-t-3xl bg-background shadow-2xl border-t animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[75dvh]">
+          <div className="fixed bottom-[calc(env(safe-area-inset-bottom)+4rem)] left-1/2 -translate-x-1/2 w-full max-w-md z-40 rounded-t-3xl bg-background shadow-2xl border-t animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[75dvh]">
 
             {selectedItem.boundingBox && imagePreview && (
               <div

@@ -21,3 +21,4 @@ export * from "./conversations";
 export * from "./messages";
 export * from "./allergens";
 export * from "./ingredients";
+export * from "./scan_outcomes";

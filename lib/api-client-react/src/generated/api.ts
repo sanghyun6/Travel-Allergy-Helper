@@ -33,6 +33,12 @@ import type {
   MenuAnalysisInput,
   OrderingInstructionsInput,
   OrderingInstructionsResult,
+  RiskInsights,
+  RiskOutcomeAck,
+  RiskOutcomeInput,
+  RiskOutcomeList,
+  RiskScoreInput,
+  RiskScoreResult,
   SearchIngredientGraph200,
   SearchIngredientGraphParams,
   TtsInput,
@@ -1209,6 +1215,328 @@ export const useTextToSpeech = <
 > => {
   return useMutation(getTextToSpeechMutationOptions(options));
 };
+
+/**
+ * @summary Compute personalized risk scores for a list of dishes
+ */
+export const getScoreRiskUrl = () => {
+  return `/api/risk/score`;
+};
+
+export const scoreRisk = async (
+  riskScoreInput: RiskScoreInput,
+  options?: RequestInit,
+): Promise<RiskScoreResult> => {
+  return customFetch<RiskScoreResult>(getScoreRiskUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(riskScoreInput),
+  });
+};
+
+export const getScoreRiskMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof scoreRisk>>,
+    TError,
+    { data: BodyType<RiskScoreInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof scoreRisk>>,
+  TError,
+  { data: BodyType<RiskScoreInput> },
+  TContext
+> => {
+  const mutationKey = ["scoreRisk"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof scoreRisk>>,
+    { data: BodyType<RiskScoreInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return scoreRisk(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type ScoreRiskMutationResult = NonNullable<
+  Awaited<ReturnType<typeof scoreRisk>>
+>;
+export type ScoreRiskMutationBody = BodyType<RiskScoreInput>;
+export type ScoreRiskMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Compute personalized risk scores for a list of dishes
+ */
+export const useScoreRisk = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof scoreRisk>>,
+    TError,
+    { data: BodyType<RiskScoreInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof scoreRisk>>,
+  TError,
+  { data: BodyType<RiskScoreInput> },
+  TContext
+> => {
+  return useMutation(getScoreRiskMutationOptions(options));
+};
+
+/**
+ * @summary Log a real-world outcome for a previously scanned dish
+ */
+export const getLogRiskOutcomeUrl = () => {
+  return `/api/risk/outcome`;
+};
+
+export const logRiskOutcome = async (
+  riskOutcomeInput: RiskOutcomeInput,
+  options?: RequestInit,
+): Promise<RiskOutcomeAck> => {
+  return customFetch<RiskOutcomeAck>(getLogRiskOutcomeUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(riskOutcomeInput),
+  });
+};
+
+export const getLogRiskOutcomeMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logRiskOutcome>>,
+    TError,
+    { data: BodyType<RiskOutcomeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof logRiskOutcome>>,
+  TError,
+  { data: BodyType<RiskOutcomeInput> },
+  TContext
+> => {
+  const mutationKey = ["logRiskOutcome"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof logRiskOutcome>>,
+    { data: BodyType<RiskOutcomeInput> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return logRiskOutcome(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type LogRiskOutcomeMutationResult = NonNullable<
+  Awaited<ReturnType<typeof logRiskOutcome>>
+>;
+export type LogRiskOutcomeMutationBody = BodyType<RiskOutcomeInput>;
+export type LogRiskOutcomeMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Log a real-world outcome for a previously scanned dish
+ */
+export const useLogRiskOutcome = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof logRiskOutcome>>,
+    TError,
+    { data: BodyType<RiskOutcomeInput> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof logRiskOutcome>>,
+  TError,
+  { data: BodyType<RiskOutcomeInput> },
+  TContext
+> => {
+  return useMutation(getLogRiskOutcomeMutationOptions(options));
+};
+
+/**
+ * @summary List the user's logged outcomes
+ */
+export const getListRiskOutcomesUrl = () => {
+  return `/api/risk/outcomes`;
+};
+
+export const listRiskOutcomes = async (
+  options?: RequestInit,
+): Promise<RiskOutcomeList> => {
+  return customFetch<RiskOutcomeList>(getListRiskOutcomesUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListRiskOutcomesQueryKey = () => {
+  return [`/api/risk/outcomes`] as const;
+};
+
+export const getListRiskOutcomesQueryOptions = <
+  TData = Awaited<ReturnType<typeof listRiskOutcomes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRiskOutcomes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListRiskOutcomesQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof listRiskOutcomes>>
+  > = ({ signal }) => listRiskOutcomes({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listRiskOutcomes>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListRiskOutcomesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listRiskOutcomes>>
+>;
+export type ListRiskOutcomesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List the user's logged outcomes
+ */
+
+export function useListRiskOutcomes<
+  TData = Awaited<ReturnType<typeof listRiskOutcomes>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listRiskOutcomes>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListRiskOutcomesQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Per-user model insights
+ */
+export const getGetRiskInsightsUrl = () => {
+  return `/api/risk/insights`;
+};
+
+export const getRiskInsights = async (
+  options?: RequestInit,
+): Promise<RiskInsights> => {
+  return customFetch<RiskInsights>(getGetRiskInsightsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetRiskInsightsQueryKey = () => {
+  return [`/api/risk/insights`] as const;
+};
+
+export const getGetRiskInsightsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getRiskInsights>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRiskInsights>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetRiskInsightsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof getRiskInsights>>> = ({
+    signal,
+  }) => getRiskInsights({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getRiskInsights>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetRiskInsightsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getRiskInsights>>
+>;
+export type GetRiskInsightsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Per-user model insights
+ */
+
+export function useGetRiskInsights<
+  TData = Awaited<ReturnType<typeof getRiskInsights>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getRiskInsights>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetRiskInsightsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Send a message to Backboard AI chat with allergy context

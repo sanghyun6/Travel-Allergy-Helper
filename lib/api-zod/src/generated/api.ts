@@ -303,6 +303,296 @@ export const TextToSpeechBody = zod.object({
 });
 
 /**
+ * @summary Compute personalized risk scores for a list of dishes
+ */
+export const scoreRiskHeaderXDeviceIdMax = 200;
+
+export const ScoreRiskHeader = zod.object({
+  "x-device-id": zod
+    .string()
+    .min(1)
+    .max(scoreRiskHeaderXDeviceIdMax)
+    .describe(
+      "Stable per-device identifier used to scope user data (history, risk model, outcomes).",
+    ),
+});
+
+export const ScoreRiskBody = zod.object({
+  items: zod.array(
+    zod.object({
+      name: zod.string(),
+      translatedName: zod.string().optional(),
+      description: zod.string().optional(),
+      cuisine: zod.string().nullish(),
+      ingredients: zod.array(zod.string()),
+      allergenFlags: zod.array(
+        zod.object({
+          name: zod.string(),
+          severity: zod.string(),
+        }),
+      ),
+      conflictingRestrictions: zod.array(zod.string()).optional(),
+      citations: zod
+        .array(
+          zod.object({
+            sourceText: zod.string(),
+            matched: zod.object({
+              id: zod.number(),
+              slug: zod.string(),
+              name: zod.string(),
+              category: zod.string().nullish(),
+              description: zod.string().nullish(),
+              source: zod.string(),
+              sourceUrl: zod.string().nullish(),
+              aliases: zod.array(
+                zod.object({
+                  alias: zod.string(),
+                  language: zod.string(),
+                }),
+              ),
+            }),
+            matchDistance: zod.number(),
+            allergen: zod.object({
+              slug: zod.string(),
+              name: zod.string(),
+              category: zod.string(),
+            }),
+            links: zod.array(
+              zod
+                .object({
+                  kind: zod.enum(["ingredient", "relation", "allergen"]),
+                  ingredient: zod
+                    .object({
+                      id: zod.number(),
+                      slug: zod.string(),
+                      name: zod.string(),
+                      category: zod.string().nullish(),
+                      description: zod.string().nullish(),
+                      source: zod.string(),
+                      sourceUrl: zod.string().nullish(),
+                      aliases: zod.array(
+                        zod.object({
+                          alias: zod.string(),
+                          language: zod.string(),
+                        }),
+                      ),
+                    })
+                    .optional(),
+                  relation: zod.string().optional(),
+                  note: zod.string().nullish(),
+                  allergen: zod
+                    .object({
+                      slug: zod.string(),
+                      name: zod.string(),
+                      category: zod.string(),
+                    })
+                    .optional(),
+                })
+                .describe(
+                  "One step in a citation chain. Exactly one of ingredient\/relation\/allergen is set.",
+                ),
+            ),
+          }),
+        )
+        .optional(),
+    }),
+  ),
+});
+
+export const ScoreRiskResponse = zod.object({
+  personalized: zod.boolean(),
+  modelVersion: zod.number(),
+  items: zod.array(
+    zod.object({
+      name: zod.string(),
+      score: zod.number(),
+      personalized: zod.boolean(),
+      modelVersion: zod.number(),
+      cuisine: zod.string(),
+      attributions: zod.array(
+        zod.object({
+          feature: zod.string(),
+          label: zod.string(),
+          contribution: zod.number(),
+        }),
+      ),
+    }),
+  ),
+});
+
+/**
+ * @summary Log a real-world outcome for a previously scanned dish
+ */
+export const logRiskOutcomeHeaderXDeviceIdMax = 200;
+
+export const LogRiskOutcomeHeader = zod.object({
+  "x-device-id": zod
+    .string()
+    .min(1)
+    .max(logRiskOutcomeHeaderXDeviceIdMax)
+    .describe(
+      "Stable per-device identifier used to scope user data (history, risk model, outcomes).",
+    ),
+});
+
+export const LogRiskOutcomeBody = zod.object({
+  dish: zod.object({
+    name: zod.string(),
+    translatedName: zod.string().optional(),
+    description: zod.string().optional(),
+    cuisine: zod.string().nullish(),
+    ingredients: zod.array(zod.string()),
+    allergenFlags: zod.array(
+      zod.object({
+        name: zod.string(),
+        severity: zod.string(),
+      }),
+    ),
+    conflictingRestrictions: zod.array(zod.string()).optional(),
+    citations: zod
+      .array(
+        zod.object({
+          sourceText: zod.string(),
+          matched: zod.object({
+            id: zod.number(),
+            slug: zod.string(),
+            name: zod.string(),
+            category: zod.string().nullish(),
+            description: zod.string().nullish(),
+            source: zod.string(),
+            sourceUrl: zod.string().nullish(),
+            aliases: zod.array(
+              zod.object({
+                alias: zod.string(),
+                language: zod.string(),
+              }),
+            ),
+          }),
+          matchDistance: zod.number(),
+          allergen: zod.object({
+            slug: zod.string(),
+            name: zod.string(),
+            category: zod.string(),
+          }),
+          links: zod.array(
+            zod
+              .object({
+                kind: zod.enum(["ingredient", "relation", "allergen"]),
+                ingredient: zod
+                  .object({
+                    id: zod.number(),
+                    slug: zod.string(),
+                    name: zod.string(),
+                    category: zod.string().nullish(),
+                    description: zod.string().nullish(),
+                    source: zod.string(),
+                    sourceUrl: zod.string().nullish(),
+                    aliases: zod.array(
+                      zod.object({
+                        alias: zod.string(),
+                        language: zod.string(),
+                      }),
+                    ),
+                  })
+                  .optional(),
+                relation: zod.string().optional(),
+                note: zod.string().nullish(),
+                allergen: zod
+                  .object({
+                    slug: zod.string(),
+                    name: zod.string(),
+                    category: zod.string(),
+                  })
+                  .optional(),
+              })
+              .describe(
+                "One step in a citation chain. Exactly one of ingredient\/relation\/allergen is set.",
+              ),
+          ),
+        }),
+      )
+      .optional(),
+  }),
+  severity: zod.enum(["safe", "mild", "severe"]),
+  cuisine: zod.string().nullish(),
+  restaurantSignals: zod.record(zod.string(), zod.unknown()).optional(),
+});
+
+export const LogRiskOutcomeResponse = zod.object({
+  ok: zod.boolean(),
+  id: zod.number(),
+});
+
+/**
+ * @summary List the user's logged outcomes
+ */
+export const listRiskOutcomesHeaderXDeviceIdMax = 200;
+
+export const ListRiskOutcomesHeader = zod.object({
+  "x-device-id": zod
+    .string()
+    .min(1)
+    .max(listRiskOutcomesHeaderXDeviceIdMax)
+    .describe(
+      "Stable per-device identifier used to scope user data (history, risk model, outcomes).",
+    ),
+});
+
+export const ListRiskOutcomesResponse = zod.object({
+  outcomes: zod.array(
+    zod.object({
+      id: zod.number(),
+      dishName: zod.string(),
+      translatedName: zod.string().nullish(),
+      severity: zod.string(),
+      severityScore: zod.number(),
+      cuisine: zod.string().nullish(),
+      createdAt: zod.number(),
+    }),
+  ),
+});
+
+/**
+ * @summary Per-user model insights
+ */
+export const getRiskInsightsHeaderXDeviceIdMax = 200;
+
+export const GetRiskInsightsHeader = zod.object({
+  "x-device-id": zod
+    .string()
+    .min(1)
+    .max(getRiskInsightsHeaderXDeviceIdMax)
+    .describe(
+      "Stable per-device identifier used to scope user data (history, risk model, outcomes).",
+    ),
+});
+
+export const GetRiskInsightsResponse = zod.object({
+  outcomeCount: zod.number(),
+  personalized: zod.boolean(),
+  currentVersion: zod.number(),
+  retrainThreshold: zod.number(),
+  nextRetrainIn: zod.number(),
+  topFeatures: zod.array(
+    zod.object({
+      feature: zod.string(),
+      label: zod.string(),
+      weight: zod.number(),
+    }),
+  ),
+  history: zod.array(
+    zod.object({
+      version: zod.number(),
+      trainedOn: zod.number(),
+      promoted: zod.boolean(),
+      baselineLogloss: zod.number().nullish(),
+      modelLogloss: zod.number().nullish(),
+      createdAt: zod.number(),
+    }),
+  ),
+});
+
+/**
  * @summary Send a message to Backboard AI chat with allergy context
  */
 export const SendChatMessageBody = zod.object({

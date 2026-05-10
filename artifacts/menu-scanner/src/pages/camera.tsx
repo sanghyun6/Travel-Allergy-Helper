@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { CitationChainList } from "@/components/citation-chain";
+import { RiskScoreBadge, OutcomeButtons, useRiskScore } from "@/components/risk-score";
 
 const MENU_LANGUAGES = [
   "Auto-detect",
@@ -56,6 +57,26 @@ function pillColors(level: string) {
     case "danger":  return "bg-red-600/90   text-white border-red-400/60";
     default:        return "bg-gray-700/90  text-white border-gray-400/60";
   }
+}
+
+function RiskScoreInline({ item, cuisine }: { item: AnyItem; cuisine: string }) {
+  const dish = useMemo(
+    () => ({
+      name: item.name,
+      translatedName: item.translatedName,
+      description: item.description,
+      cuisine,
+      ingredients: [] as string[],
+      allergenFlags: item.allergenFlags,
+      conflictingRestrictions: item.conflictingRestrictions,
+      citations: (item.citations ?? []).map((c) => ({
+        allergen: c.allergen ? { slug: c.allergen.slug } : undefined,
+      })),
+    }),
+    [item.name, item.translatedName, item.description, cuisine, item.allergenFlags, item.conflictingRestrictions, item.citations],
+  );
+  const { data, loading } = useRiskScore(dish);
+  return <RiskScoreBadge result={data} loading={loading} />;
 }
 
 function SafetyIcon({ level, className }: { level: string; className?: string }) {
@@ -552,6 +573,8 @@ export default function CameraPage() {
 
               <p className="text-sm text-foreground/80 leading-relaxed">{selectedItem.description}</p>
 
+              <RiskScoreInline item={selectedItem} cuisine={detectedLanguage} />
+
               {selectedItem.citations && selectedItem.citations.length > 0 && (
                 <CitationChainList chains={selectedItem.citations} />
               )}
@@ -596,6 +619,21 @@ export default function CameraPage() {
                   <><Plus className="w-4 h-4 mr-2" /> Add to Order</>
                 )}
               </Button>
+
+              <OutcomeButtons
+                dish={{
+                  name: selectedItem.name,
+                  translatedName: selectedItem.translatedName,
+                  description: selectedItem.description,
+                  ingredients: [],
+                  allergenFlags: selectedItem.allergenFlags,
+                  conflictingRestrictions: selectedItem.conflictingRestrictions,
+                  citations: (selectedItem.citations ?? []).map((c) => ({
+                    allergen: c.allergen ? { slug: c.allergen.slug } : undefined,
+                  })),
+                }}
+                cuisine={detectedLanguage}
+              />
             </div>
             </div>
           </div>

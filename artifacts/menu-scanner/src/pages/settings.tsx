@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { useProfile } from "@/context/store-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,10 +8,12 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { COMMON_RESTRICTIONS, LANGUAGES } from "@/lib/constants";
+import { Brain, ChevronRight } from "lucide-react";
 
 export default function SettingsPage() {
   const { profile, setProfile } = useProfile();
   const { toast } = useToast();
+  const [, setLocation] = useLocation();
 
   const [nativeLanguage, setNativeLanguage] = useState("");
   const [restrictions, setRestrictions] = useState<string[]>([]);
@@ -125,6 +128,23 @@ export default function SettingsPage() {
         >
           Save Changes
         </Button>
+
+        <button
+          onClick={() => setLocation("/insights")}
+          className="w-full flex items-center gap-3 p-4 border rounded-xl bg-card hover:bg-muted/50 transition-colors text-left"
+          data-testid="button-open-insights"
+        >
+          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+            <Brain className="w-5 h-5 text-primary" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="font-semibold">Personalized risk model</p>
+            <p className="text-xs text-muted-foreground">
+              See how your model is learning from your reactions.
+            </p>
+          </div>
+          <ChevronRight className="w-5 h-5 text-muted-foreground shrink-0" />
+        </button>
       </div>
     </div>
   );

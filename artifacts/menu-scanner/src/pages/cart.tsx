@@ -5,6 +5,7 @@ import { useGetOrderingInstructions, useSendChatMessage } from "@workspace/api-c
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Play, Loader2, Trash2, ChevronRight, MessageCircle, Send, ShieldCheck, Volume2, ShoppingBag, X } from "lucide-react";
+import { OutcomeButtons } from "@/components/risk-score";
 
 export default function CartPage() {
   const [, setLocation] = useLocation();
@@ -140,22 +141,39 @@ export default function CartPage() {
           {cartItems.map((item, idx) => (
             <div
               key={idx}
-              className="flex items-center justify-between p-4 border rounded-xl bg-card"
+              className="p-4 border rounded-xl bg-card space-y-3"
               data-testid={`cart-item-${idx}`}
             >
-              <div className="flex-1 pr-4">
-                <p className="font-bold">{item.translatedName}</p>
-                <p className="text-sm text-muted-foreground">{item.name}</p>
+              <div className="flex items-center justify-between">
+                <div className="flex-1 pr-4">
+                  <p className="font-bold">{item.translatedName}</p>
+                  <p className="text-sm text-muted-foreground">{item.name}</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => removeFromCart(idx)}
+                  data-testid={`button-remove-item-${idx}`}
+                >
+                  <Trash2 className="w-5 h-5" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="text-muted-foreground hover:text-destructive"
-                onClick={() => removeFromCart(idx)}
-                data-testid={`button-remove-item-${idx}`}
-              >
-                <Trash2 className="w-5 h-5" />
-              </Button>
+              {getInstructions.data && (
+                <OutcomeButtons
+                  compact
+                  dish={{
+                    name: item.name,
+                    translatedName: item.translatedName,
+                    description: item.description,
+                    ingredients: [],
+                    allergenFlags: item.allergenFlags ?? [],
+                    conflictingRestrictions: item.conflictingRestrictions ?? [],
+                    citations: [],
+                  }}
+                  cuisine={menuLanguage}
+                />
+              )}
             </div>
           ))}
         </div>

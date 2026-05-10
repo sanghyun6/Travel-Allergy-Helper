@@ -186,6 +186,115 @@ export interface ChatMessageResult {
   threadId: string;
 }
 
+export interface RiskDishInput {
+  name: string;
+  translatedName?: string;
+  description?: string;
+  /** @nullable */
+  cuisine?: string | null;
+  ingredients: string[];
+  allergenFlags: MenuAllergenFlag[];
+  conflictingRestrictions?: string[];
+  citations?: CitationChain[];
+}
+
+export interface RiskScoreInput {
+  items: RiskDishInput[];
+}
+
+export interface RiskAttribution {
+  feature: string;
+  label: string;
+  contribution: number;
+}
+
+export interface RiskScoreItem {
+  name: string;
+  score: number;
+  personalized: boolean;
+  modelVersion: number;
+  cuisine: string;
+  attributions: RiskAttribution[];
+}
+
+export interface RiskScoreResult {
+  personalized: boolean;
+  modelVersion: number;
+  items: RiskScoreItem[];
+}
+
+export type RiskOutcomeInputSeverity =
+  (typeof RiskOutcomeInputSeverity)[keyof typeof RiskOutcomeInputSeverity];
+
+export const RiskOutcomeInputSeverity = {
+  safe: "safe",
+  mild: "mild",
+  severe: "severe",
+} as const;
+
+export type RiskOutcomeInputRestaurantSignals = { [key: string]: unknown };
+
+export interface RiskOutcomeInput {
+  dish: RiskDishInput;
+  severity: RiskOutcomeInputSeverity;
+  /** @nullable */
+  cuisine?: string | null;
+  restaurantSignals?: RiskOutcomeInputRestaurantSignals;
+}
+
+export interface RiskOutcomeAck {
+  ok: boolean;
+  id: number;
+}
+
+export interface RiskOutcomeRecord {
+  id: number;
+  dishName: string;
+  /** @nullable */
+  translatedName?: string | null;
+  severity: string;
+  severityScore: number;
+  /** @nullable */
+  cuisine?: string | null;
+  createdAt: number;
+}
+
+export interface RiskOutcomeList {
+  outcomes: RiskOutcomeRecord[];
+}
+
+export interface RiskInsightsHistory {
+  version: number;
+  trainedOn: number;
+  promoted: boolean;
+  /** @nullable */
+  baselineLogloss?: number | null;
+  /** @nullable */
+  modelLogloss?: number | null;
+  createdAt: number;
+}
+
+export interface RiskInsightsFeature {
+  feature: string;
+  label: string;
+  weight: number;
+}
+
+export interface RiskInsights {
+  outcomeCount: number;
+  personalized: boolean;
+  currentVersion: number;
+  retrainThreshold: number;
+  nextRetrainIn: number;
+  topFeatures: RiskInsightsFeature[];
+  history: RiskInsightsHistory[];
+}
+
+/**
+ * Stable per-device identifier used to scope user data (history, risk model, outcomes).
+ */
+export type DeviceIdHeaderParameter = string;
+
 export type SearchIngredientGraphParams = {
   /**
    * Free-text ingredient string in any language

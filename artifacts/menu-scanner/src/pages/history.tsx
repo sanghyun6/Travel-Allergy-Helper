@@ -4,6 +4,7 @@ import { useHistory, useCart, type HistoryEntry } from "@/context/store-context"
 import { Button } from "@/components/ui/button";
 import { Clock, Trash2, ChevronDown, ChevronUp, ShieldCheck, AlertTriangle, XCircle, RotateCcw, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { OutcomeButtons } from "@/components/risk-score";
 
 function safetyIcon(level: string) {
   if (level === "safe") return <ShieldCheck className="w-4 h-4 text-green-600" />;
@@ -133,12 +134,27 @@ export default function HistoryPage() {
                 <div className="border-t bg-muted/20">
                   <ul className="divide-y">
                     {entry.items.map((item, idx) => (
-                      <li key={idx} className="p-3 flex items-start gap-3">
-                        <div className="mt-0.5">{safetyIcon(item.safetyLevel)}</div>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold truncate">{item.translatedName}</p>
-                          <p className="text-xs text-muted-foreground truncate">{item.name}</p>
+                      <li key={idx} className="p-3 space-y-2">
+                        <div className="flex items-start gap-3">
+                          <div className="mt-0.5">{safetyIcon(item.safetyLevel)}</div>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold truncate">{item.translatedName}</p>
+                            <p className="text-xs text-muted-foreground truncate">{item.name}</p>
+                          </div>
                         </div>
+                        <OutcomeButtons
+                          compact
+                          dish={{
+                            name: item.name,
+                            translatedName: item.translatedName,
+                            description: item.description,
+                            ingredients: [],
+                            allergenFlags: item.allergenFlags ?? [],
+                            conflictingRestrictions: item.conflictingRestrictions ?? [],
+                            citations: [],
+                          }}
+                          cuisine={entry.menuLanguage}
+                        />
                       </li>
                     ))}
                   </ul>

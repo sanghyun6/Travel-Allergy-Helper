@@ -18,6 +18,8 @@ tags:
     description: Text-to-speech operations
   - name: chat
     description: Backboard AI chat operations
+  - name: risk
+    description: Personalized per-user risk model (outcomes, scoring, insights)
 paths:
   /healthz:
     get:
@@ -321,6 +323,78 @@ paths:
                 type: string
                 format: binary
 
+  /risk/score:
+    post:
+      operationId: scoreRisk
+      tags: [risk]
+      summary: Compute personalized risk scores for a list of dishes
+      parameters:
+        - $ref: "#/components/parameters/DeviceIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskScoreInput"
+      responses:
+        "200":
+          description: Risk scores
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskScoreResult"
+
+  /risk/outcome:
+    post:
+      operationId: logRiskOutcome
+      tags: [risk]
+      summary: Log a real-world outcome for a previously scanned dish
+      parameters:
+        - $ref: "#/components/parameters/DeviceIdHeader"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RiskOutcomeInput"
+      responses:
+        "200":
+          description: Outcome stored
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskOutcomeAck"
+
+  /risk/outcomes:
+    get:
+      operationId: listRiskOutcomes
+      tags: [risk]
+      summary: List the user's logged outcomes
+      parameters:
+        - $ref: "#/components/parameters/DeviceIdHeader"
+      responses:
+        "200":
+          description: Outcome list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskOutcomeList"
+
+  /risk/insights:
+    get:
+      operationId: getRiskInsights
+      tags: [risk]
+      summary: Per-user model insights
+      parameters:
+        - $ref: "#/components/parameters/DeviceIdHeader"
+      responses:
+        "200":
+          description: Insights
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RiskInsights"
+
   /chat/message:
     post:
       operationId: sendChatMessage
@@ -341,6 +415,16 @@ paths:
                 $ref: "#/components/schemas/ChatMessageResult"
 
 components:
+  parameters:
+    DeviceIdHeader:
+      name: x-device-id
+      in: header
+      required: true
+      description: Stable per-device identifier used to scope user data (history, risk model, outcomes).
+      schema:
+        type: string
+        minLength: 1
+        maxLength: 200
   schemas:
     HealthStatus:
       type: object
@@ -738,3 +822,154 @@ components:
       required:
         - reply
         - threadId
+
+    RiskDishInput:
+      type: object
+      properties:
+        name: { type: string }
+        translatedName: { type: string }
+        description: { type: string }
+        cuisine: { type: ["string", "null"] }
+        ingredients:
+          type: array
+          items: { type: string }
+        allergenFlags:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuAllergenFlag"
+        conflictingRestrictions:
+          type: array
+          items: { type: string }
+        citations:
+          type: array
+          items:
+            $ref: "#/components/schemas/CitationChain"
+      required: [name, ingredients, allergenFlags]
+
+    RiskScoreInput:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskDishInput"
+      required: [items]
+
+    RiskAttribution:
+      type: object
+      properties:
+        feature: { type: string }
+        label: { type: string }
+        contribution: { type: number }
+      required: [feature, label, contribution]
+
+    RiskScoreItem:
+      type: object
+      properties:
+        name: { type: string }
+        score: { type: integer }
+        personalized: { type: boolean }
+        modelVersion: { type: integer }
+        cuisine: { type: string }
+        attributions:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskAttribution"
+      required: [name, score, personalized, modelVersion, cuisine, attributions]
+
+    RiskScoreResult:
+      type: object
+      properties:
+        personalized: { type: boolean }
+        modelVersion: { type: integer }
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskScoreItem"
+      required: [personalized, modelVersion, items]
+
+    RiskOutcomeInput:
+      type: object
+      properties:
+        dish:
+          $ref: "#/components/schemas/RiskDishInput"
+        severity:
+          type: string
+          enum: [safe, mild, severe]
+        cuisine: { type: ["string", "null"] }
+        restaurantSignals:
+          type: object
+          additionalProperties: true
+      required: [dish, severity]
+
+    RiskOutcomeAck:
+      type: object
+      properties:
+        ok: { type: boolean }
+        id: { type: integer }
+      required: [ok, id]
+
+    RiskOutcomeRecord:
+      type: object
+      properties:
+        id: { type: integer }
+        dishName: { type: string }
+        translatedName: { type: ["string", "null"] }
+        severity: { type: string }
+        severityScore: { type: integer }
+        cuisine: { type: ["string", "null"] }
+        createdAt: { type: number }
+      required: [id, dishName, severity, severityScore, createdAt]
+
+    RiskOutcomeList:
+      type: object
+      properties:
+        outcomes:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskOutcomeRecord"
+      required: [outcomes]
+
+    RiskInsightsHistory:
+      type: object
+      properties:
+        version: { type: integer }
+        trainedOn: { type: integer }
+        promoted: { type: boolean }
+        baselineLogloss: { type: ["number", "null"] }
+        modelLogloss: { type: ["number", "null"] }
+        createdAt: { type: number }
+      required: [version, trainedOn, promoted, createdAt]
+
+    RiskInsightsFeature:
+      type: object
+      properties:
+        feature: { type: string }
+        label: { type: string }
+        weight: { type: number }
+      required: [feature, label, weight]
+
+    RiskInsights:
+      type: object
+      properties:
+        outcomeCount: { type: integer }
+        personalized: { type: boolean }
+        currentVersion: { type: integer }
+        retrainThreshold: { type: integer }
+        nextRetrainIn: { type: integer }
+        topFeatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskInsightsFeature"
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/RiskInsightsHistory"
+      required:
+        - outcomeCount
+        - personalized
+        - currentVersion
+        - retrainThreshold
+        - nextRetrainIn
+        - topFeatures
+        - history

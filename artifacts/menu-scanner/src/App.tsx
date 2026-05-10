@@ -12,6 +12,7 @@ import CameraPage from "@/pages/camera";
 import CartPage from "@/pages/cart";
 import HistoryPage from "@/pages/history";
 import SettingsPage from "@/pages/settings";
+import InsightsPage from "@/pages/insights";
 
 const queryClient = new QueryClient();
 
@@ -34,6 +35,7 @@ function CameraRoute() { return <ProtectedRoute component={CameraPage} />; }
 function CartRoute() { return <ProtectedRoute component={CartPage} />; }
 function HistoryRoute() { return <ProtectedRoute component={HistoryPage} />; }
 function SettingsRoute() { return <ProtectedRoute component={SettingsPage} />; }
+function InsightsRoute() { return <ProtectedRoute component={InsightsPage} />; }
 
 function Router() {
   const { profile, isLoaded } = useProfile();
@@ -57,6 +59,7 @@ function Router() {
       <Route path="/cart" component={CartRoute} />
       <Route path="/history" component={HistoryRoute} />
       <Route path="/settings" component={SettingsRoute} />
+      <Route path="/insights" component={InsightsRoute} />
       <Route component={NotFound} />
     </Switch>
   );

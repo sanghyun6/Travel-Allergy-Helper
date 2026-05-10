@@ -133,40 +133,37 @@ Always flag common allergens even if the user did not list them: peanuts, tree n
 Return ONLY valid JSON of shape:
 {"detectedLanguage":"language name","items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0},"translatedName":"...","description":"...","safetyLevel":"safe","conflictingRestrictions":[],"allergenFlags":[]}]}`;
 
-    const openaiBase = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL!;
-    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY!;
-    const openaiResp = await fetch(`${openaiBase}/chat/completions`, {
+    const googleKey = process.env.GOOGLE_API_KEY!;
+    const geminiUrl =
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:streamGenerateContent?alt=sse";
+    const openaiResp = await fetch(geminiUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${openaiKey}`,
+        "x-goog-api-key": googleKey,
       },
       body: JSON.stringify({
-        model: "gpt-5-mini",
-        stream: true,
-        response_format: { type: "json_object" },
-        max_completion_tokens: 4096,
-        messages: [
+        contents: [
           {
             role: "user",
-            content: [
-              { type: "text", text: prompt },
-              {
-                type: "image_url",
-                image_url: {
-                  url: `data:${mimeType};base64,${imageBase64}`,
-                },
-              },
+            parts: [
+              { inlineData: { mimeType, data: imageBase64 } },
+              { text: prompt },
             ],
           },
         ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          maxOutputTokens: 4096,
+          thinkingConfig: { thinkingBudget: 0 },
+        },
       }),
       signal: abortController.signal,
     });
 
     if (!openaiResp.ok || !openaiResp.body) {
       const errText = await openaiResp.text().catch(() => "");
-      throw new Error(`OpenAI error ${openaiResp.status}: ${errText.slice(0, 500)}`);
+      throw new Error(`Gemini error ${openaiResp.status}: ${errText.slice(0, 500)}`);
     }
 
     type RawItem = {
@@ -320,9 +317,14 @@ Return ONLY valid JSON of shape:
         if (payload === "[DONE]") break streamLoop;
         try {
           const evt = JSON.parse(payload) as {
-            choices?: Array<{ delta?: { content?: string } }>;
+            candidates?: Array<{
+              content?: { parts?: Array<{ text?: string }> };
+            }>;
           };
-          const text = evt.choices?.[0]?.delta?.content ?? "";
+          const text =
+            evt.candidates?.[0]?.content?.parts
+              ?.map((p) => p.text ?? "")
+              .join("") ?? "";
           if (!text) continue;
           buffer += text;
           if (!layoutSent) tryEmitDetectedLanguage();

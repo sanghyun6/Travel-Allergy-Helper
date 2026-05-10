@@ -108,32 +108,45 @@ router.post("/menu/analyze", async (req, res) => {
   };
 
   try {
-    // ── Pass 1: fast layout / OCR ───────────────────────────────────────
-    const layoutPrompt = `OCR a restaurant menu photo (written in ${menuLanguage}).
+    // ── Single-pass: layout + per-item analysis in ONE Gemini call ───────
+    const prompt = `You are a food safety assistant for a traveler. The image is a restaurant menu (written in ${menuLanguage}).
 
-For each distinct menu entry return ONLY:
-- "name": the original-language item name as printed
-- "box": tight box around just the item name line, normalized integers 0–1000 (ymin,xmin,ymax,xmax; 0,0 = top-left)
+User dietary restrictions: ${restrictionList}
 
-Do NOT translate, describe, or analyze ingredients. Be FAST.
+For EVERY distinct menu entry visible in the image, return one object containing BOTH the layout box AND the safety analysis. Use common knowledge of each dish (the well-known recipe behind the name) to decide safety.
 
-Return ONLY valid JSON:
-{"items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0}}],"detectedLanguage":"language name"}`;
+Each item must include:
+- "name": original-language item name as printed on the menu
+- "box": tight bounding box around just the item name line, normalized integers 0–1000 (ymin,xmin,ymax,xmax; 0,0 = top-left)
+- "translatedName": English translation of the item name
+- "description": brief 1-sentence description of what the dish typically is
+- "safetyLevel": "safe" | "warning" | "danger"
+- "conflictingRestrictions": list of the user's restrictions this dish conflicts with (empty array if none)
+- "allergenFlags": list of { "name": "Peanuts", "severity": "high" | "medium" | "low" }
 
-    const layoutResponse = await ai.models.generateContent({
-      model: "gemini-2.5-flash-lite",
+Safety rules:
+- "danger": directly conflicts with the user's restrictions OR almost certainly contains a major allergen (peanuts, tree nuts, shellfish, eggs, dairy, gluten, soy)
+- "warning": may contain traces or unclear ingredients
+- "safe": appears safe for this user
+Always flag common allergens even if the user did not list them: peanuts, tree nuts, shellfish, milk/dairy, eggs, wheat/gluten, soy, fish.
+
+Return ONLY valid JSON of shape:
+{"detectedLanguage":"language name","items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0},"translatedName":"...","description":"...","safetyLevel":"safe","conflictingRestrictions":[],"allergenFlags":[]}]}`;
+
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
       contents: [
         {
           role: "user",
           parts: [
             { inlineData: { mimeType, data: imageBase64 } },
-            { text: layoutPrompt },
+            { text: prompt },
           ],
         },
       ],
       config: {
         responseMimeType: "application/json",
-        maxOutputTokens: 2048,
+        maxOutputTokens: 8192,
         thinkingConfig: { thinkingBudget: 0 },
         abortSignal: abortController.signal,
       },
@@ -141,216 +154,94 @@ Return ONLY valid JSON:
 
     if (clientGone) return finish();
 
-    let layoutParsed: { items?: LayoutItem[]; detectedLanguage?: string };
+    type RawItem = Partial<AnalyzedItem> & {
+      box?: BBox;
+      boundingBox?: BBox;
+      nameBox?: BBox;
+      name?: string;
+    };
+    let parsed: { items?: RawItem[]; detectedLanguage?: string } = {};
     try {
-      layoutParsed = JSON.parse(layoutResponse.text ?? "{}");
+      parsed = JSON.parse(response.text ?? "{}");
     } catch {
-      layoutParsed = {};
+      parsed = {};
     }
 
-    const rawItems = Array.isArray(layoutParsed.items) ? layoutParsed.items : [];
-    const detectedLanguage = layoutParsed.detectedLanguage ?? menuLanguage;
+    const rawItems = Array.isArray(parsed.items) ? parsed.items : [];
+    const detectedLanguage = parsed.detectedLanguage ?? menuLanguage;
 
-    const layoutItems: LayoutItem[] = rawItems
+    const items: AnalyzedItem[] = rawItems
       .filter((it) => it && typeof it.name === "string" && it.name.trim().length > 0)
       .map((it, i) => {
-        const box = (it as { box?: BBox; boundingBox?: BBox; nameBox?: BBox }).box
-          ?? it.boundingBox
-          ?? it.nameBox;
+        const box = it.box ?? it.boundingBox ?? it.nameBox;
         return {
-          id: i,
-          name: it.name,
-          boundingBox: box,
-          nameBox: box,
-        };
-      });
-
-    send("layout", {
-      items: layoutItems,
-      detectedLanguage,
-    });
-
-    if (layoutItems.length === 0) {
-      send("done", { total: 0, completed: 0 });
-      return finish();
-    }
-
-    send("progress", { completed: 0, total: layoutItems.length });
-
-    // ── Pass 2: per-item translation + safety analysis (parallel) ───────
-    // Each item is processed independently. A failure in one item never
-    // breaks the rest of the scan — it surfaces as an `item_error` event
-    // with the affected item's id. We wait for ALL items to settle before
-    // emitting `done` so we never close the stream while writes are still
-    // in flight.
-    const CONCURRENCY = 10;
-    let completed = 0;
-    let failed = 0;
-    let inFlight = 0;
-    let cursor = 0;
-
-    const analyzeOne = async (item: LayoutItem): Promise<void> => {
-      if (clientGone) return;
-
-      const itemPrompt = `You are a food safety assistant for travelers.
-
-Menu item from a ${detectedLanguage} restaurant: "${item.name}"
-User dietary restrictions: ${restrictionList}
-
-Based on common knowledge of this dish (no image is provided — work from the name alone), return JSON:
-{
-  "translatedName": "English translation of the item name",
-  "description": "brief 1-sentence description of what the dish typically is",
-  "safetyLevel": "safe" | "warning" | "danger",
-  "conflictingRestrictions": ["restriction1"],
-  "allergenFlags": [ { "name": "Peanuts", "severity": "high" | "medium" | "low" } ],
-  "extractedIngredients": ["ingredient or sauce names you see / infer, in original language preferred"]
-}
-
-For "extractedIngredients", list the SPECIFIC ingredients, sauces, broths, condiments, or
-named components that go into this dish — both ones written on the menu and well-known
-defaults (e.g. for "Pad See Ew" include "soy sauce" and "oyster sauce" even if not printed).
-Keep names short (one phrase each), use the menu's language where possible.
-
-Safety levels:
-- "danger": directly conflicts with the user's restrictions OR almost certainly contains a major allergen (peanuts, tree nuts, shellfish, eggs, dairy, gluten, soy)
-- "warning": may contain traces or unclear ingredients
-- "safe": appears safe for this user
-
-Always flag common allergens even if user did not list them: peanuts, tree nuts, shellfish, milk/dairy, eggs, wheat/gluten, soy, fish.
-
-Return ONLY valid JSON, no markdown.`;
-
-      try {
-        const response = await ai.models.generateContent({
-          model: "gemini-2.5-flash-lite",
-          contents: [
-            {
-              role: "user",
-              parts: [{ text: itemPrompt }],
-            },
-          ],
-          config: {
-            responseMimeType: "application/json",
-            maxOutputTokens: 512,
-            thinkingConfig: { thinkingBudget: 0 },
-            abortSignal: abortController.signal,
-          },
-        });
-
-        if (clientGone) return;
-
-        let analysis: Partial<AnalyzedItem> & { extractedIngredients?: string[] } = {};
-        try {
-          analysis = JSON.parse(response.text ?? "{}");
-        } catch {
-          analysis = {};
-        }
-
-        // Resolve ingredients through the knowledge graph and build citation
-        // chains for whichever ingredients trace to one of the user's
-        // (or default) allergens. The dish's own name is also resolved so
-        // dishes like "Pad See Ew" trigger via the graph even if the LLM
-        // forgets a sauce.
-        let citations: CitationChain[] = [];
-        try {
-          const ingredientTexts = [
-            item.name,
-            ...(Array.isArray(analysis.extractedIngredients)
-              ? analysis.extractedIngredients.filter(
-                  (s): s is string => typeof s === "string",
-                )
-              : []),
-          ];
-          const allergenSlugs = restrictionsToAllergenSlugs(restrictions);
-          citations = await buildCitationChains(ingredientTexts, allergenSlugs);
-        } catch (graphErr) {
-          // Graph is best-effort — never break the main analysis on a graph error.
-          console.error(`Citation graph failed for item ${item.id}:`, graphErr);
-        }
-
-        const analyzed: AnalyzedItem = {
-          name: item.name,
+          name: it.name as string,
           translatedName:
-            typeof analysis.translatedName === "string" && analysis.translatedName.trim()
-              ? analysis.translatedName
-              : item.name,
-          description:
-            typeof analysis.description === "string" ? analysis.description : "",
+            typeof it.translatedName === "string" && it.translatedName.trim()
+              ? it.translatedName
+              : (it.name as string),
+          description: typeof it.description === "string" ? it.description : "",
           safetyLevel:
-            analysis.safetyLevel === "danger" ||
-            analysis.safetyLevel === "warning" ||
-            analysis.safetyLevel === "safe"
-              ? analysis.safetyLevel
+            it.safetyLevel === "danger" ||
+            it.safetyLevel === "warning" ||
+            it.safetyLevel === "safe"
+              ? it.safetyLevel
               : "warning",
-          conflictingRestrictions: Array.isArray(analysis.conflictingRestrictions)
-            ? analysis.conflictingRestrictions.filter(
+          conflictingRestrictions: Array.isArray(it.conflictingRestrictions)
+            ? it.conflictingRestrictions.filter(
                 (s): s is string => typeof s === "string",
               )
             : [],
-          allergenFlags: Array.isArray(analysis.allergenFlags)
-            ? analysis.allergenFlags.filter(
+          allergenFlags: Array.isArray(it.allergenFlags)
+            ? it.allergenFlags.filter(
                 (f): f is AllergenFlag =>
                   !!f && typeof f.name === "string" && typeof f.severity === "string",
               )
             : [],
-          boundingBox: item.boundingBox,
-          nameBox: item.nameBox,
-          citations,
-        };
+          boundingBox: box,
+          nameBox: box,
+          // Citations are best-effort; resolved below in a single batch.
+          citations: [],
+          // attach id externally
+          id: i,
+        } as AnalyzedItem & { id: number };
+      });
 
-        completed++;
-        send("item", { id: item.id, item: analyzed });
-      } catch (err) {
-        if (clientGone || abortController.signal.aborted) return;
-        failed++;
-        const message =
-          err instanceof Error ? err.message : "Item analysis failed";
-        console.error(`Per-item analysis failed for item ${item.id}:`, err);
-        send("item_error", { id: item.id, name: item.name, message });
-      } finally {
-        if (!clientGone) {
-          send("progress", {
-            completed,
-            failed,
-            total: layoutItems.length,
-          });
-        }
-      }
-    };
-
-    // Manual concurrency-limited runner over Promise.allSettled semantics:
-    // every item runs to completion (success OR failure) before we resolve.
-    await new Promise<void>((resolve) => {
-      const launchNext = () => {
-        if (clientGone) {
-          if (inFlight === 0) resolve();
-          return;
-        }
-        while (inFlight < CONCURRENCY && cursor < layoutItems.length) {
-          const item = layoutItems[cursor++];
-          inFlight++;
-          analyzeOne(item).finally(() => {
-            inFlight--;
-            if (cursor >= layoutItems.length && inFlight === 0) {
-              resolve();
-            } else {
-              launchNext();
-            }
-          });
-        }
-        if (cursor >= layoutItems.length && inFlight === 0) resolve();
-      };
-      launchNext();
+    // Emit layout placeholders so the UI can render pins immediately, then
+    // emit each fully-analyzed item. (Same client wire format as before — no
+    // frontend changes required.)
+    send("layout", {
+      items: items.map((it, i) => ({
+        id: i,
+        name: it.name,
+        boundingBox: it.boundingBox,
+        nameBox: it.nameBox,
+      })),
+      detectedLanguage,
     });
 
-    if (clientGone) return finish();
+    if (items.length === 0) {
+      send("done", { total: 0, completed: 0 });
+      return finish();
+    }
 
-    send("done", {
-      total: layoutItems.length,
-      completed,
-      failed,
+    // Best-effort citation chains — runs once over all items, not per-item.
+    let citationsByIndex: CitationChain[][] = items.map(() => []);
+    try {
+      const allergenSlugs = restrictionsToAllergenSlugs(restrictions);
+      citationsByIndex = await Promise.all(
+        items.map((it) => buildCitationChains([it.name], allergenSlugs).catch(() => [])),
+      );
+    } catch {
+      /* best-effort, ignore */
+    }
+
+    items.forEach((it, i) => {
+      const out: AnalyzedItem = { ...it, citations: citationsByIndex[i] ?? [] };
+      send("item", { id: i, item: out });
     });
+    send("progress", { completed: items.length, failed: 0, total: items.length });
+    send("done", { total: items.length, completed: items.length, failed: 0 });
     finish();
   } catch (err) {
     console.error("Menu analysis error:", err);

@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback } from "react";
-import { useProfile, useCart, MenuItem } from "@/hooks/use-store";
+import { useProfile, useCart, type MenuItem } from "@/context/store-context";
 import { useAnalyzeMenu } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";

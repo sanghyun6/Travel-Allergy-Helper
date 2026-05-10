@@ -179,7 +179,7 @@ importers:
         specifier: workspace:*
         version: link:../../lib/integrations-gemini-ai
       backboard-sdk:
-        specifier: ^1.0.0
+        specifier: ^1.5.14
         version: 1.5.14
       cookie-parser:
         specifier: ^1.4.7

@@ -4,10 +4,9 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
 import { BottomNav } from "@/components/Navigation";
-import { useProfile } from "@/hooks/use-store";
+import { StoreProvider, useProfile } from "@/context/store-context";
 import { useEffect, type ComponentType } from "react";
 
-// Pages
 import Onboarding from "@/pages/onboarding";
 import CameraPage from "@/pages/camera";
 import CartPage from "@/pages/cart";
@@ -63,17 +62,19 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-          <div className="font-sans antialiased text-foreground bg-background h-[100dvh] w-full overflow-hidden flex flex-col items-center">
-            <div className="w-full max-w-md h-full relative overflow-y-auto bg-background shadow-2xl sm:border-x">
-              <Router />
-              <BottomNav />
+      <StoreProvider>
+        <TooltipProvider>
+          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+            <div className="font-sans antialiased text-foreground bg-background h-[100dvh] w-full overflow-hidden flex flex-col items-center">
+              <div className="w-full max-w-md h-full relative overflow-y-auto bg-background shadow-2xl sm:border-x">
+                <Router />
+                <BottomNav />
+              </div>
             </div>
-          </div>
-        </WouterRouter>
-        <Toaster />
-      </TooltipProvider>
+          </WouterRouter>
+          <Toaster />
+        </TooltipProvider>
+      </StoreProvider>
     </QueryClientProvider>
   );
 }

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
-import { useProfile, useCart, useChatThread } from "@/hooks/use-store";
+import { useProfile, useCart, useChatThread } from "@/context/store-context";
 import { useGetOrderingInstructions, useTextToSpeech, useSendChatMessage } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

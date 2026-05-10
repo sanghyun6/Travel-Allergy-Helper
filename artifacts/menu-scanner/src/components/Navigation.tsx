@@ -1,6 +1,6 @@
 import { Link, useLocation } from "wouter";
 import { Camera, ShoppingBag, Settings } from "lucide-react";
-import { useCart } from "@/hooks/use-store";
+import { useCart } from "@/context/store-context";
 
 export function BottomNav() {
   const [location] = useLocation();

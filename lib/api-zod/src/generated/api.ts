@@ -14,3 +14,170 @@ import * as zod from "zod";
 export const HealthCheckResponse = zod.object({
   status: zod.string(),
 });
+
+/**
+ * @summary List all conversations
+ */
+export const ListGeminiConversationsResponseItem = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListGeminiConversationsResponse = zod.array(
+  ListGeminiConversationsResponseItem,
+);
+
+/**
+ * @summary Create a new conversation
+ */
+export const CreateGeminiConversationBody = zod.object({
+  title: zod.string(),
+});
+
+/**
+ * @summary Get conversation with messages
+ */
+export const GetGeminiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const GetGeminiConversationResponse = zod.object({
+  id: zod.number(),
+  title: zod.string(),
+  createdAt: zod.coerce.date(),
+  messages: zod.array(
+    zod.object({
+      id: zod.number(),
+      conversationId: zod.number(),
+      role: zod.string(),
+      content: zod.string(),
+      createdAt: zod.coerce.date(),
+    }),
+  ),
+});
+
+/**
+ * @summary Delete a conversation
+ */
+export const DeleteGeminiConversationParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+/**
+ * @summary List messages in a conversation
+ */
+export const ListGeminiMessagesParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const ListGeminiMessagesResponseItem = zod.object({
+  id: zod.number(),
+  conversationId: zod.number(),
+  role: zod.string(),
+  content: zod.string(),
+  createdAt: zod.coerce.date(),
+});
+export const ListGeminiMessagesResponse = zod.array(
+  ListGeminiMessagesResponseItem,
+);
+
+/**
+ * @summary Send a message and receive an AI response (SSE stream)
+ */
+export const SendGeminiMessageParams = zod.object({
+  id: zod.coerce.number(),
+});
+
+export const SendGeminiMessageBody = zod.object({
+  content: zod.string(),
+});
+
+/**
+ * @summary Generate an image from a text prompt
+ */
+export const GenerateGeminiImageBody = zod.object({
+  prompt: zod.string(),
+});
+
+export const GenerateGeminiImageResponse = zod.object({
+  b64_json: zod.string(),
+  mimeType: zod.string(),
+});
+
+/**
+ * @summary Analyze a menu photo using Gemini vision
+ */
+export const AnalyzeMenuBody = zod.object({
+  imageBase64: zod.string(),
+  menuLanguage: zod.string(),
+  restrictions: zod.array(zod.string()),
+});
+
+export const AnalyzeMenuResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      name: zod.string(),
+      description: zod.string(),
+      safetyLevel: zod.string(),
+      conflictingRestrictions: zod.array(zod.string()),
+      allergenFlags: zod.array(
+        zod.object({
+          name: zod.string(),
+          severity: zod.string(),
+        }),
+      ),
+      translatedName: zod.string(),
+    }),
+  ),
+  detectedLanguage: zod.string(),
+});
+
+/**
+ * @summary Generate ordering instructions in the user's native language
+ */
+export const GetOrderingInstructionsBody = zod.object({
+  items: zod.array(zod.string()),
+  targetLanguage: zod.string(),
+  restrictions: zod.array(zod.string()),
+  menuLanguage: zod.string(),
+});
+
+export const GetOrderingInstructionsResponse = zod.object({
+  instructions: zod.array(
+    zod.object({
+      item: zod.string(),
+      phrase: zod.string(),
+      pronunciation: zod.string(),
+    }),
+  ),
+  fullOrderPhrase: zod.string(),
+});
+
+/**
+ * @summary Convert text to speech using ElevenLabs
+ */
+export const TextToSpeechBody = zod.object({
+  text: zod.string(),
+  language: zod.string(),
+});
+
+export const TextToSpeechResponse = zod.object({
+  audioBase64: zod.string(),
+  mimeType: zod.string(),
+});
+
+/**
+ * @summary Send a message to Backboard AI chat with allergy context
+ */
+export const SendChatMessageBody = zod.object({
+  message: zod.string(),
+  threadId: zod.string().nullish(),
+  restrictions: zod.array(zod.string()),
+  cartItems: zod.array(zod.string()),
+  orderingPhrases: zod.array(zod.string()),
+});
+
+export const SendChatMessageResponse = zod.object({
+  reply: zod.string(),
+  threadId: zod.string(),
+});

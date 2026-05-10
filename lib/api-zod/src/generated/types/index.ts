@@ -6,4 +6,23 @@
  * OpenAPI spec version: 0.1.0
  */
 
+export * from "./chatMessageInput";
+export * from "./chatMessageResult";
+export * from "./geminiConversation";
+export * from "./geminiConversationInput";
+export * from "./geminiConversationWithMessages";
+export * from "./geminiError";
+export * from "./geminiImageInput";
+export * from "./geminiImageResponse";
+export * from "./geminiMessage";
+export * from "./geminiMessageInput";
 export * from "./healthStatus";
+export * from "./menuAllergenFlag";
+export * from "./menuAnalysisInput";
+export * from "./menuAnalysisResult";
+export * from "./menuItem";
+export * from "./orderingInstruction";
+export * from "./orderingInstructionsInput";
+export * from "./orderingInstructionsResult";
+export * from "./ttsInput";
+export * from "./ttsResponse";

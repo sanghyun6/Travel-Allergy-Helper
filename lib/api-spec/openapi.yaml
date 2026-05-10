@@ -10,6 +10,14 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: gemini
+    description: Gemini AI chat and image operations
+  - name: menu
+    description: Menu analysis operations
+  - name: tts
+    description: Text-to-speech operations
+  - name: chat
+    description: Backboard AI chat operations
 paths:
   /healthz:
     get:
@@ -24,6 +32,220 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /gemini/conversations:
+    get:
+      operationId: listGeminiConversations
+      tags: [gemini]
+      summary: List all conversations
+      responses:
+        "200":
+          description: List of conversations
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeminiConversation"
+    post:
+      operationId: createGeminiConversation
+      tags: [gemini]
+      summary: Create a new conversation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeminiConversationInput"
+      responses:
+        "201":
+          description: Created conversation
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversation"
+
+  /gemini/conversations/{id}:
+    get:
+      operationId: getGeminiConversation
+      tags: [gemini]
+      summary: Get conversation with messages
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: Conversation with messages
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiConversationWithMessages"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiError"
+    delete:
+      operationId: deleteGeminiConversation
+      tags: [gemini]
+      summary: Delete a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiError"
+
+  /gemini/conversations/{id}/messages:
+    get:
+      operationId: listGeminiMessages
+      tags: [gemini]
+      summary: List messages in a conversation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of messages
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/GeminiMessage"
+    post:
+      operationId: sendGeminiMessage
+      tags: [gemini]
+      summary: Send a message and receive an AI response (SSE stream)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeminiMessageInput"
+      responses:
+        "200":
+          description: SSE stream of assistant response chunks
+          content:
+            text/event-stream: {}
+
+  /gemini/generate-image:
+    post:
+      operationId: generateGeminiImage
+      tags: [gemini]
+      summary: Generate an image from a text prompt
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/GeminiImageInput"
+      responses:
+        "200":
+          description: Generated image data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GeminiImageResponse"
+
+  /menu/analyze:
+    post:
+      operationId: analyzeMenu
+      tags: [menu]
+      summary: Analyze a menu photo using Gemini vision
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MenuAnalysisInput"
+      responses:
+        "200":
+          description: Menu analysis results
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MenuAnalysisResult"
+
+  /menu/ordering-instructions:
+    post:
+      operationId: getOrderingInstructions
+      tags: [menu]
+      summary: Generate ordering instructions in the user's native language
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/OrderingInstructionsInput"
+      responses:
+        "200":
+          description: Ordering instructions
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OrderingInstructionsResult"
+
+  /tts/speak:
+    post:
+      operationId: textToSpeech
+      tags: [tts]
+      summary: Convert text to speech using ElevenLabs
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TtsInput"
+      responses:
+        "200":
+          description: Audio data as base64
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TtsResponse"
+
+  /chat/message:
+    post:
+      operationId: sendChatMessage
+      tags: [chat]
+      summary: Send a message to Backboard AI chat with allergy context
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatMessageInput"
+      responses:
+        "200":
+          description: AI response
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatMessageResult"
+
 components:
   schemas:
     HealthStatus:
@@ -34,3 +256,274 @@ components:
       required:
         - status
 
+    GeminiConversation:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - title
+        - createdAt
+
+    GeminiConversationInput:
+      type: object
+      properties:
+        title:
+          type: string
+      required:
+        - title
+
+    GeminiMessage:
+      type: object
+      properties:
+        id:
+          type: integer
+        conversationId:
+          type: integer
+        role:
+          type: string
+        content:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - conversationId
+        - role
+        - content
+        - createdAt
+
+    GeminiMessageInput:
+      type: object
+      properties:
+        content:
+          type: string
+      required:
+        - content
+
+    GeminiConversationWithMessages:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        messages:
+          type: array
+          items:
+            $ref: "#/components/schemas/GeminiMessage"
+      required:
+        - id
+        - title
+        - createdAt
+        - messages
+
+    GeminiImageInput:
+      type: object
+      properties:
+        prompt:
+          type: string
+      required:
+        - prompt
+
+    GeminiImageResponse:
+      type: object
+      properties:
+        b64_json:
+          type: string
+        mimeType:
+          type: string
+      required:
+        - b64_json
+        - mimeType
+
+    GeminiError:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    MenuAnalysisInput:
+      type: object
+      properties:
+        imageBase64:
+          type: string
+        menuLanguage:
+          type: string
+        restrictions:
+          type: array
+          items:
+            type: string
+      required:
+        - imageBase64
+        - menuLanguage
+        - restrictions
+
+    MenuAllergenFlag:
+      type: object
+      properties:
+        name:
+          type: string
+        severity:
+          type: string
+      required:
+        - name
+        - severity
+
+    MenuItem:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        safetyLevel:
+          type: string
+        conflictingRestrictions:
+          type: array
+          items:
+            type: string
+        allergenFlags:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuAllergenFlag"
+        translatedName:
+          type: string
+      required:
+        - name
+        - description
+        - safetyLevel
+        - conflictingRestrictions
+        - allergenFlags
+        - translatedName
+
+    MenuAnalysisResult:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MenuItem"
+        detectedLanguage:
+          type: string
+      required:
+        - items
+        - detectedLanguage
+
+    OrderingInstructionsInput:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: string
+        targetLanguage:
+          type: string
+        restrictions:
+          type: array
+          items:
+            type: string
+        menuLanguage:
+          type: string
+      required:
+        - items
+        - targetLanguage
+        - restrictions
+        - menuLanguage
+
+    OrderingInstruction:
+      type: object
+      properties:
+        item:
+          type: string
+        phrase:
+          type: string
+        pronunciation:
+          type: string
+      required:
+        - item
+        - phrase
+        - pronunciation
+
+    OrderingInstructionsResult:
+      type: object
+      properties:
+        instructions:
+          type: array
+          items:
+            $ref: "#/components/schemas/OrderingInstruction"
+        fullOrderPhrase:
+          type: string
+      required:
+        - instructions
+        - fullOrderPhrase
+
+    TtsInput:
+      type: object
+      properties:
+        text:
+          type: string
+        language:
+          type: string
+      required:
+        - text
+        - language
+
+    TtsResponse:
+      type: object
+      properties:
+        audioBase64:
+          type: string
+        mimeType:
+          type: string
+      required:
+        - audioBase64
+        - mimeType
+
+    ChatMessageInput:
+      type: object
+      properties:
+        message:
+          type: string
+        threadId:
+          type: ["string", "null"]
+        restrictions:
+          type: array
+          items:
+            type: string
+        cartItems:
+          type: array
+          items:
+            type: string
+        orderingPhrases:
+          type: array
+          items:
+            type: string
+      required:
+        - message
+        - restrictions
+        - cartItems
+        - orderingPhrases
+
+    ChatMessageResult:
+      type: object
+      properties:
+        reply:
+          type: string
+        threadId:
+          type: string
+      required:
+        - reply
+        - threadId

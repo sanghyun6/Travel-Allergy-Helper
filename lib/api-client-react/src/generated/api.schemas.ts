@@ -8,3 +8,112 @@
 export interface HealthStatus {
   status: string;
 }
+
+export interface GeminiConversation {
+  id: number;
+  title: string;
+  createdAt: string;
+}
+
+export interface GeminiConversationInput {
+  title: string;
+}
+
+export interface GeminiMessage {
+  id: number;
+  conversationId: number;
+  role: string;
+  content: string;
+  createdAt: string;
+}
+
+export interface GeminiMessageInput {
+  content: string;
+}
+
+export interface GeminiConversationWithMessages {
+  id: number;
+  title: string;
+  createdAt: string;
+  messages: GeminiMessage[];
+}
+
+export interface GeminiImageInput {
+  prompt: string;
+}
+
+export interface GeminiImageResponse {
+  b64_json: string;
+  mimeType: string;
+}
+
+export interface GeminiError {
+  error: string;
+}
+
+export interface MenuAnalysisInput {
+  imageBase64: string;
+  menuLanguage: string;
+  restrictions: string[];
+}
+
+export interface MenuAllergenFlag {
+  name: string;
+  severity: string;
+}
+
+export interface MenuItem {
+  name: string;
+  description: string;
+  safetyLevel: string;
+  conflictingRestrictions: string[];
+  allergenFlags: MenuAllergenFlag[];
+  translatedName: string;
+}
+
+export interface MenuAnalysisResult {
+  items: MenuItem[];
+  detectedLanguage: string;
+}
+
+export interface OrderingInstructionsInput {
+  items: string[];
+  targetLanguage: string;
+  restrictions: string[];
+  menuLanguage: string;
+}
+
+export interface OrderingInstruction {
+  item: string;
+  phrase: string;
+  pronunciation: string;
+}
+
+export interface OrderingInstructionsResult {
+  instructions: OrderingInstruction[];
+  fullOrderPhrase: string;
+}
+
+export interface TtsInput {
+  text: string;
+  language: string;
+}
+
+export interface TtsResponse {
+  audioBase64: string;
+  mimeType: string;
+}
+
+export interface ChatMessageInput {
+  message: string;
+  /** @nullable */
+  threadId?: string | null;
+  restrictions: string[];
+  cartItems: string[];
+  orderingPhrases: string[];
+}
+
+export interface ChatMessageResult {
+  reply: string;
+  threadId: string;
+}

@@ -133,24 +133,41 @@ Always flag common allergens even if the user did not list them: peanuts, tree n
 Return ONLY valid JSON of shape:
 {"detectedLanguage":"language name","items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0},"translatedName":"...","description":"...","safetyLevel":"safe","conflictingRestrictions":[],"allergenFlags":[]}]}`;
 
-    const stream = await ai.models.generateContentStream({
-      model: "gemini-3-flash-preview",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { inlineData: { mimeType, data: imageBase64 } },
-            { text: prompt },
-          ],
-        },
-      ],
-      config: {
-        responseMimeType: "application/json",
-        maxOutputTokens: 4096,
-        thinkingConfig: { thinkingBudget: 0 },
-        abortSignal: abortController.signal,
+    const openaiBase = process.env.AI_INTEGRATIONS_OPENAI_BASE_URL!;
+    const openaiKey = process.env.AI_INTEGRATIONS_OPENAI_API_KEY!;
+    const openaiResp = await fetch(`${openaiBase}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${openaiKey}`,
       },
+      body: JSON.stringify({
+        model: "gpt-5-mini",
+        stream: true,
+        response_format: { type: "json_object" },
+        max_completion_tokens: 4096,
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: prompt },
+              {
+                type: "image_url",
+                image_url: {
+                  url: `data:${mimeType};base64,${imageBase64}`,
+                },
+              },
+            ],
+          },
+        ],
+      }),
+      signal: abortController.signal,
     });
+
+    if (!openaiResp.ok || !openaiResp.body) {
+      const errText = await openaiResp.text().catch(() => "");
+      throw new Error(`OpenAI error ${openaiResp.status}: ${errText.slice(0, 500)}`);
+    }
 
     type RawItem = {
       name?: string;
@@ -283,14 +300,37 @@ Return ONLY valid JSON of shape:
       }
     };
 
-    for await (const chunk of stream) {
-      if (clientGone) return finish();
-      const text = chunk.text ?? "";
-      if (!text) continue;
-      buffer += text;
-      // Try to grab detectedLanguage early so the layout event has it.
-      if (!layoutSent) tryEmitDetectedLanguage();
-      processBuffer();
+    const reader = openaiResp.body.getReader();
+    const decoder = new TextDecoder();
+    let sseBuffer = "";
+    streamLoop: while (true) {
+      if (clientGone) {
+        try { await reader.cancel(); } catch { /* ignore */ }
+        return finish();
+      }
+      const { value, done } = await reader.read();
+      if (done) break;
+      sseBuffer += decoder.decode(value, { stream: true });
+      let nl: number;
+      while ((nl = sseBuffer.indexOf("\n")) !== -1) {
+        const line = sseBuffer.slice(0, nl).trim();
+        sseBuffer = sseBuffer.slice(nl + 1);
+        if (!line.startsWith("data:")) continue;
+        const payload = line.slice(5).trim();
+        if (payload === "[DONE]") break streamLoop;
+        try {
+          const evt = JSON.parse(payload) as {
+            choices?: Array<{ delta?: { content?: string } }>;
+          };
+          const text = evt.choices?.[0]?.delta?.content ?? "";
+          if (!text) continue;
+          buffer += text;
+          if (!layoutSent) tryEmitDetectedLanguage();
+          processBuffer();
+        } catch {
+          // Skip malformed SSE chunks.
+        }
+      }
     }
 
     if (clientGone) return finish();

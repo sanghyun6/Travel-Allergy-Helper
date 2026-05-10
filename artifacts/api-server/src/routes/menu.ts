@@ -200,11 +200,15 @@ Each item must include:
 - "conflictingRestrictions": list of the user's restrictions this dish conflicts with (empty array if none)
 - "allergenFlags": list of { "name": "Peanuts", "severity": "high" | "medium" | "low" }
 
-Safety rules:
-- "danger": directly conflicts with the user's restrictions OR almost certainly contains a major allergen (peanuts, tree nuts, shellfish, eggs, dairy, gluten, soy)
-- "warning": may contain traces or unclear ingredients
-- "safe": appears safe for this user
-Always flag common allergens even if the user did not list them: peanuts, tree nuts, shellfish, milk/dairy, eggs, wheat/gluten, soy, fish.
+Safety rules — judge ONLY against the user's listed restrictions above. Ingredients the user did NOT list are irrelevant to safety, no matter how common an allergen they are.
+- "danger": the dish almost certainly contains an ingredient that directly conflicts with one of the user's listed restrictions.
+- "warning": the dish MAY contain or be cross-contaminated with one of the user's listed restrictions (unclear recipe, shared fryer/wok, optional ingredient, regional variation).
+- "safe": the dish does not appear to contain any of the user's listed restrictions.
+- If the user has NO listed restrictions, every dish is "safe".
+
+"conflictingRestrictions" must contain only items copied verbatim from the user's listed restrictions above — never add allergens the user did not list.
+
+"allergenFlags" is informational only and does NOT affect safetyLevel. You may list any major allergen present in the dish (peanuts, tree nuts, shellfish, milk/dairy, eggs, wheat/gluten, soy, fish, sesame) so the user can see what's in it, but a dish with allergenFlags the user did not list must still be "safe".
 
 Return ONLY valid JSON of shape:
 {"detectedLanguage":"language name","items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0},"translatedName":"...","description":"...","safetyLevel":"safe","conflictingRestrictions":[],"allergenFlags":[]}]}`;

@@ -1,0 +1,14 @@
+uploads = []
+outputs = []
+
+[[generated]]
+id = "LZDsVzBs3F_xat9qYyxCw"
+uri = "file://artifacts/pitch-deck/public/hero.png"
+type = "image"
+title = "hero menu scan"
+
+[[generated]]
+id = "5d6hHxyjt_wx9cdtVwg4t"
+uri = "file://artifacts/pitch-deck/public/impact.png"
+type = "image"
+title = "friends sharing meal abroad"

@@ -1,0 +1,74 @@
+[
+  {
+    "id": "813d2026-f511-42bc-a968-c8330297ebc8",
+    "position": 1,
+    "filepath": "src/pages/slides/Title.tsx",
+    "title": "Title",
+    "description": "Allergy Travel Scanner — Eat safely in any language.",
+    "speakerNotes": "Hi — I'm here with Allergy Travel Scanner.\n\n- For travelers with food allergies, every foreign menu is a guessing game.\n- We turn your phone into a calm, instant translator that knows your allergies.\n- Tagline: eat safely in any language."
+  },
+  {
+    "id": "96a3d655-cc93-421e-94fb-f2a0f6174212",
+    "position": 2,
+    "filepath": "src/pages/slides/Problem.tsx",
+    "title": "Problem",
+    "description": "Foreign menus put 32M Americans with allergies at real risk.",
+    "speakerNotes": "Set the stakes.\n\n- 32 million Americans live with food allergies.\n- Every year, 200,000 end up in the ER for severe reactions.\n- Abroad, the menu is in a language they can't read — there's no tool today that screens it the way an allergist would."
+  },
+  {
+    "id": "b28558fb-2cc4-480b-bcf5-105f0804291e",
+    "position": 3,
+    "filepath": "src/pages/slides/Solution.tsx",
+    "title": "Solution",
+    "description": "Point your phone at a menu and every dish gets a colored risk pin.",
+    "speakerNotes": "One-line pitch.\n\n- Hold up the camera; we read the menu in any language.\n- Each dish gets a pin: green for safe, amber for caution, red for avoid.\n- Tap any dish for a plain-English explanation grounded in your allergy profile."
+  },
+  {
+    "id": "5f1de4ca-c429-44df-b698-64817806a9ad",
+    "position": 4,
+    "filepath": "src/pages/slides/Demo.tsx",
+    "title": "Demo",
+    "description": "Hand-off slide for the live product demo.",
+    "speakerNotes": "Hand off to the live demo here.\n\n- I'll switch to the running app and scan a real Spanish tapas menu against my allergy profile.\n- Three things to watch for: scan, explain, order.\n- Come back to the deck after the demo."
+  },
+  {
+    "id": "7412b842-13d5-4ab3-9c33-47f3f9781b29",
+    "position": 5,
+    "filepath": "src/pages/slides/HowItWorks.tsx",
+    "title": "How it works",
+    "description": "Camera, then Gemini plus knowledge graph, then explainable risk pins.",
+    "speakerNotes": "Three steps under the hood.\n\n- The camera and OCR isolate dish names and ingredient hints.\n- Gemini 2.0 Flash translates and walks our ingredient knowledge graph for hidden allergens and contamination.\n- The output is a colored pin with a citation chain — never a black-box answer."
+  },
+  {
+    "id": "affe69de-4e4a-4161-b882-aac7fea63a72",
+    "position": 6,
+    "filepath": "src/pages/slides/Unique.tsx",
+    "title": "What's unique",
+    "description": "Citation chains, cross-contamination engine, personalized risk, show-the-waiter mode.",
+    "speakerNotes": "Why this isn't just a translator.\n\n- Citation chains: every verdict shows the ingredient, source, and rule behind it.\n- A cross-contamination engine flags shared fryers and kitchen practices.\n- A personalized risk model learns your tolerance over time.\n- Show-the-waiter mode hands the kitchen a translated allergy card."
+  },
+  {
+    "id": "eda9058f-e5c8-4725-94c5-6016db393f55",
+    "position": 7,
+    "filepath": "src/pages/slides/TechStack.tsx",
+    "title": "Tech stack",
+    "description": "Gemini 2.0 Flash, 100k+ ingredient graph, SSE streaming, React + Capacitor, ML scoring.",
+    "speakerNotes": "Built for explainability, not just speed.\n\n- Gemini 2.0 Flash for multimodal reading and translation.\n- A 100,000-plus node ingredient knowledge graph.\n- SSE streaming so dishes appear as they're analyzed.\n- React plus Capacitor for one codebase across web and native; ML scoring per user."
+  },
+  {
+    "id": "1f4ffe3c-0ea9-4362-a889-7c85418dbf44",
+    "position": 8,
+    "filepath": "src/pages/slides/Impact.tsx",
+    "title": "Impact & vision",
+    "description": "Who it helps today and where it's going next.",
+    "speakerNotes": "Who this is for and where it goes.\n\n- Today: 32 million people in the US, plus anyone traveling abroad with dietary restrictions.\n- Next: native iOS and Android, twelve more languages, and a memory of trusted restaurants.\n- The goal is making eating abroad feel like second nature."
+  },
+  {
+    "id": "f2c9c7e2-46c8-4f0a-9b0a-2a3f6e1b9c10",
+    "position": 9,
+    "filepath": "src/pages/slides/ThankYou.tsx",
+    "title": "Thank you",
+    "description": "Closing slide with demo URL placeholder and Q&A invitation.",
+    "speakerNotes": "Close and open it up.\n\n- Thank you — try the live demo at allergy.travel or scan the QR.\n- Happy to take questions, especially the hard ones.\n- Eat safely in any language."
+  }
+]

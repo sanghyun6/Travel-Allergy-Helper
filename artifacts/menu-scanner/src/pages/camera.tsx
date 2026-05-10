@@ -480,7 +480,7 @@ export default function CameraPage() {
 
       {/* ── Top bar: language translation pill ── */}
       {showCameraSurface && (
-        <div className="relative z-10 px-4 pt-4 pb-2 flex items-center gap-2">
+        <div className="relative z-10 px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-2 flex items-center gap-2">
           <input
             type="file"
             accept="image/*"
@@ -754,7 +754,7 @@ export default function CameraPage() {
       {/* ── Bottom shutter bar (idle/live mode only) ── */}
       {showCameraSurface && (
         <div className="relative z-10 mt-auto">
-          <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 flex items-end justify-between pl-[72px] pr-[72px] pb-[24px] pt-[36px]">
+          <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 flex items-end justify-between pl-[72px] pr-[72px] pt-[36px] pb-[max(24px,env(safe-area-inset-bottom))]">
             <button
               type="button"
               onClick={() => setLocation("/cart")}

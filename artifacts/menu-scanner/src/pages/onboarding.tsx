@@ -40,7 +40,7 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background p-6">
+    <div className="min-h-[100dvh] flex flex-col bg-background px-6 pb-6 pt-[max(1.5rem,env(safe-area-inset-top))]">
       <div className="flex-1 flex flex-col max-w-md mx-auto w-full pt-12 pb-24">
 
         {step === 1 && (

@@ -25,7 +25,7 @@ export default function InsightsPage() {
 
   return (
     <div className="min-h-[100dvh] pb-24 bg-background flex flex-col max-w-md mx-auto w-full">
-      <header className="p-4 border-b bg-card sticky top-0 z-10 flex items-center gap-3">
+      <header className="px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] border-b bg-card sticky top-0 z-10 flex items-center gap-3">
         <button
           onClick={() => setLocation("/settings")}
           className="p-1.5 rounded-full hover:bg-muted"

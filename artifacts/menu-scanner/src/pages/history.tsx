@@ -77,7 +77,7 @@ export default function HistoryPage() {
 
   return (
     <div className="min-h-[100dvh] pb-20 bg-background flex flex-col max-w-md mx-auto w-full">
-      <header className="p-4 border-b bg-card sticky top-0 z-10 flex justify-between items-center">
+      <header className="px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] border-b bg-card sticky top-0 z-10 flex justify-between items-center">
         <div className="flex items-center gap-3">
           <button
             onClick={() => setLocation("/camera")}

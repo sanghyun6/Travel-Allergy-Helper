@@ -133,7 +133,7 @@ export default function OrderPage() {
 
   return (
     <div className="min-h-[100dvh] bg-background flex flex-col max-w-md mx-auto w-full pb-28">
-      <header className="p-4 flex items-center gap-3 sticky top-0 z-10 bg-background/95 backdrop-blur">
+      <header className="px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))] flex items-center gap-3 sticky top-0 z-10 bg-background/95 backdrop-blur">
         <button
           type="button"
           onClick={() => setLocation("/cart")}

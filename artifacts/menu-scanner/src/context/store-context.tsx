@@ -16,6 +16,13 @@ export interface MenuItem {
   nameBox?: { ymin: number; xmin: number; ymax: number; xmax: number };
 }
 
+export interface HistoryEntry {
+  id: string;
+  savedAt: number;
+  menuLanguage: string;
+  items: MenuItem[];
+}
+
 interface StoreContextValue {
   profile: UserProfile | null;
   isLoaded: boolean;
@@ -28,6 +35,10 @@ interface StoreContextValue {
   threadId: string | null;
   setThreadId: (id: string) => void;
   clearThread: () => void;
+  history: HistoryEntry[];
+  saveCartToHistory: () => HistoryEntry | null;
+  removeHistoryEntry: (id: string) => void;
+  clearHistory: () => void;
 }
 
 const StoreContext = createContext<StoreContextValue | null>(null);
@@ -38,6 +49,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<MenuItem[]>([]);
   const [menuLanguage, setMenuLanguageState] = useState<string | null>(null);
   const [threadId, setThreadIdState] = useState<string | null>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
 
   useEffect(() => {
     try {
@@ -47,6 +59,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     try {
       const c = localStorage.getItem("cartItems");
       if (c) setCartItems(JSON.parse(c));
+    } catch {}
+    try {
+      const h = localStorage.getItem("orderHistory");
+      if (h) setHistory(JSON.parse(h));
     } catch {}
     const lang = localStorage.getItem("menuLanguage");
     if (lang) setMenuLanguageState(lang);
@@ -100,11 +116,50 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setThreadIdState(null);
   }, []);
 
+  const saveCartToHistory = useCallback<() => HistoryEntry | null>(() => {
+    let saved: HistoryEntry | null = null;
+    setCartItems((currentCart) => {
+      if (currentCart.length === 0) return currentCart;
+      const lang = localStorage.getItem("menuLanguage") || "Unknown";
+      const entry: HistoryEntry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        savedAt: Date.now(),
+        menuLanguage: lang,
+        items: currentCart,
+      };
+      saved = entry;
+      setHistory((prev) => {
+        const next = [entry, ...prev].slice(0, 50);
+        localStorage.setItem("orderHistory", JSON.stringify(next));
+        return next;
+      });
+      localStorage.removeItem("cartItems");
+      localStorage.removeItem("menuLanguage");
+      setMenuLanguageState(null);
+      return [];
+    });
+    return saved;
+  }, []);
+
+  const removeHistoryEntry = useCallback((id: string) => {
+    setHistory((prev) => {
+      const next = prev.filter((e) => e.id !== id);
+      localStorage.setItem("orderHistory", JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const clearHistory = useCallback(() => {
+    setHistory([]);
+    localStorage.removeItem("orderHistory");
+  }, []);
+
   return (
     <StoreContext.Provider value={{
       profile, isLoaded, setProfile,
       cartItems, menuLanguage, addToCart, removeFromCart, clearCart,
       threadId, setThreadId, clearThread,
+      history, saveCartToHistory, removeHistoryEntry, clearHistory,
     }}>
       {children}
     </StoreContext.Provider>
@@ -130,4 +185,9 @@ export function useCart() {
 export function useChatThread() {
   const { threadId, setThreadId, clearThread } = useStore();
   return { threadId, setThreadId, clearThread };
+}
+
+export function useHistory() {
+  const { history, saveCartToHistory, removeHistoryEntry, clearHistory } = useStore();
+  return { history, saveCartToHistory, removeHistoryEntry, clearHistory };
 }

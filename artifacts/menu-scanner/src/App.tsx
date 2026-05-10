@@ -10,6 +10,7 @@ import { useEffect, type ComponentType } from "react";
 import Onboarding from "@/pages/onboarding";
 import CameraPage from "@/pages/camera";
 import CartPage from "@/pages/cart";
+import HistoryPage from "@/pages/history";
 import SettingsPage from "@/pages/settings";
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ function ProtectedRoute({ component: Component }: { component: ComponentType }) 
 
 function CameraRoute() { return <ProtectedRoute component={CameraPage} />; }
 function CartRoute() { return <ProtectedRoute component={CartPage} />; }
+function HistoryRoute() { return <ProtectedRoute component={HistoryPage} />; }
 function SettingsRoute() { return <ProtectedRoute component={SettingsPage} />; }
 
 function Router() {
@@ -53,6 +55,7 @@ function Router() {
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/camera" component={CameraRoute} />
       <Route path="/cart" component={CartRoute} />
+      <Route path="/history" component={HistoryRoute} />
       <Route path="/settings" component={SettingsRoute} />
       <Route component={NotFound} />
     </Switch>

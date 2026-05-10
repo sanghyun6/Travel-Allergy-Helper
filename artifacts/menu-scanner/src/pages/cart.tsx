@@ -1,16 +1,19 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useLocation } from "wouter";
-import { useProfile, useCart, useChatThread } from "@/context/store-context";
+import { useProfile, useCart, useChatThread, useHistory } from "@/context/store-context";
 import { useGetOrderingInstructions, useSendChatMessage } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Loader2, Trash2, ChevronRight, MessageCircle, Send, ShieldCheck, Volume2, ShoppingBag, X } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { Play, Loader2, Trash2, ChevronRight, MessageCircle, Send, ShieldCheck, Volume2, ShoppingBag, X, BookmarkPlus } from "lucide-react";
 
 export default function CartPage() {
   const [, setLocation] = useLocation();
   const { profile } = useProfile();
   const { cartItems, menuLanguage, removeFromCart, clearCart } = useCart();
   const { threadId, setThreadId, clearThread } = useChatThread();
+  const { saveCartToHistory } = useHistory();
+  const { toast } = useToast();
 
   const getInstructions = useGetOrderingInstructions();
   const chat = useSendChatMessage();
@@ -97,6 +100,17 @@ export default function CartPage() {
     setMessages([]);
   };
 
+  const handleSaveToHistory = () => {
+    const saved = saveCartToHistory();
+    if (saved) {
+      clearThread();
+      getInstructions.reset();
+      setMessages([]);
+      toast({ title: "Saved to history", description: `${saved.items.length} item${saved.items.length !== 1 ? "s" : ""} archived.` });
+      setLocation("/history");
+    }
+  };
+
   if (cartItems.length === 0) {
     return (
       <div className="min-h-[100dvh] pb-20 bg-background flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto w-full">
@@ -124,15 +138,26 @@ export default function CartPage() {
           <h1 className="text-xl font-bold">Your Order</h1>
           <p className="text-sm text-muted-foreground">{cartItems.length} item{cartItems.length !== 1 ? "s" : ""}</p>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
-          onClick={handleClearCart}
-          data-testid="button-clear-cart"
-        >
-          <X className="w-4 h-4 mr-1" /> Clear all
-        </Button>
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-primary hover:text-primary hover:bg-primary/10 rounded-lg"
+            onClick={handleSaveToHistory}
+            data-testid="button-save-to-history"
+          >
+            <BookmarkPlus className="w-4 h-4 mr-1" /> Save
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+            onClick={handleClearCart}
+            data-testid="button-clear-cart"
+          >
+            <X className="w-4 h-4 mr-1" /> Clear
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto">

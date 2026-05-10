@@ -1,5 +1,5 @@
 import { Link, useLocation } from "wouter";
-import { Camera, ShoppingBag, Settings } from "lucide-react";
+import { Camera, ShoppingBag, Clock, Settings } from "lucide-react";
 import { useCart } from "@/context/store-context";
 
 export function BottomNav() {
@@ -8,9 +8,10 @@ export function BottomNav() {
   
   if (location === "/" || location === "/onboarding") return null;
 
-  const links = [
+  const links: { href: string; icon: typeof Camera; label: string; badge?: number | null }[] = [
     { href: "/camera", icon: Camera, label: "Camera" },
     { href: "/cart", icon: ShoppingBag, label: "Cart", badge: cartItems.length > 0 ? cartItems.length : null },
+    { href: "/history", icon: Clock, label: "History" },
     { href: "/settings", icon: Settings, label: "Settings" },
   ];
 

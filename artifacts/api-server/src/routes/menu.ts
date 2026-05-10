@@ -134,7 +134,7 @@ Return ONLY valid JSON of shape:
 {"detectedLanguage":"language name","items":[{"name":"...","box":{"ymin":0,"xmin":0,"ymax":0,"xmax":0},"translatedName":"...","description":"...","safetyLevel":"safe","conflictingRestrictions":[],"allergenFlags":[]}]}`;
 
     const stream = await ai.models.generateContentStream({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       contents: [
         {
           role: "user",

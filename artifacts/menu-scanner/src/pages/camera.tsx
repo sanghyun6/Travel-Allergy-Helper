@@ -8,6 +8,7 @@ import {
   Camera, Image as ImageIcon, Loader2, AlertTriangle,
   ShieldCheck, XCircle, Plus, Check, RefreshCw, X,
   ShoppingBag, Settings as SettingsIcon, ArrowLeftRight, ArrowLeft,
+  Clock,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { Capacitor } from "@capacitor/core";
@@ -757,17 +758,12 @@ export default function CameraPage() {
           <div className="bg-primary/95 backdrop-blur-md shadow-[0_-8px_24px_rgba(0,0,0,0.25)] px-6 flex items-end justify-between pl-[72px] pr-[72px] pt-[36px] pb-6">
             <button
               type="button"
-              onClick={() => setLocation("/cart")}
+              onClick={() => setLocation("/history")}
               className="relative w-14 h-14 rounded-full bg-white/15 hover:bg-white/25 active:scale-95 transition-all flex items-center justify-center text-white"
-              aria-label="Past order"
-              data-testid="button-past-order"
+              aria-label="Past orders"
+              data-testid="button-past-orders"
             >
-              <ShoppingBag className="w-6 h-6" strokeWidth={2.25} />
-              {cartItems.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-white text-primary text-[10px] font-bold h-5 min-w-5 px-1 rounded-full flex items-center justify-center shadow-md">
-                  {cartItems.length}
-                </span>
-              )}
+              <Clock className="w-6 h-6" strokeWidth={2.25} />
             </button>
 
             <button

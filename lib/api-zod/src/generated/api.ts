@@ -281,6 +281,7 @@ export const GetOrderingInstructionsBody = zod.object({
   targetLanguage: zod.string(),
   restrictions: zod.array(zod.string()),
   menuLanguage: zod.string(),
+  extraInstructions: zod.string().optional(),
 });
 
 export const GetOrderingInstructionsResponse = zod.object({

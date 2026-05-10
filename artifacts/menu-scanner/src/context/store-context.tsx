@@ -35,6 +35,8 @@ interface StoreContextValue {
   threadId: string | null;
   setThreadId: (id: string) => void;
   clearThread: () => void;
+  extraInstructions: string;
+  setExtraInstructions: (s: string) => void;
   history: HistoryEntry[];
   historyLoading: boolean;
   historyError: string | null;
@@ -71,6 +73,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [cartItems, setCartItems] = useState<MenuItem[]>([]);
   const [menuLanguage, setMenuLanguageState] = useState<string | null>(null);
   const [threadId, setThreadIdState] = useState<string | null>(null);
+  const [extraInstructions, setExtraInstructionsState] = useState<string>("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [historyLoading, setHistoryLoading] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
@@ -93,6 +96,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     if (lang) setMenuLanguageState(lang);
     const tid = localStorage.getItem("chatThreadId");
     if (tid) setThreadIdState(tid);
+    const ei = localStorage.getItem("extraInstructions");
+    if (ei) setExtraInstructionsState(ei);
     const sid = localStorage.getItem("currentSessionId");
     if (sid) sessionIdRef.current = sid;
     setIsLoaded(true);
@@ -147,7 +152,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       persistSession(next, lang);
       if (next.length === 0) {
         setMenuLanguageState(null);
+        setExtraInstructionsState("");
         localStorage.removeItem("menuLanguage");
+        localStorage.removeItem("extraInstructions");
         sessionIdRef.current = null;
         localStorage.removeItem("currentSessionId");
       }
@@ -159,8 +166,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     persistSession([], null);
     setCartItems([]);
     setMenuLanguageState(null);
+    setExtraInstructionsState("");
     localStorage.removeItem("cartItems");
     localStorage.removeItem("menuLanguage");
+    localStorage.removeItem("extraInstructions");
     sessionIdRef.current = null;
     localStorage.removeItem("currentSessionId");
   }, [persistSession]);
@@ -173,6 +182,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const clearThread = useCallback(() => {
     localStorage.removeItem("chatThreadId");
     setThreadIdState(null);
+  }, []);
+
+  const setExtraInstructions = useCallback((s: string) => {
+    localStorage.setItem("extraInstructions", s);
+    setExtraInstructionsState(s);
   }, []);
 
   const refreshHistory = useCallback(async () => {
@@ -233,6 +247,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       profile, isLoaded, setProfile,
       cartItems, menuLanguage, addToCart, removeFromCart, clearCart,
       threadId, setThreadId, clearThread,
+      extraInstructions, setExtraInstructions,
       history, historyLoading, historyError,
       refreshHistory, removeHistoryEntry, clearHistory, reorderFromHistory,
     }}>
@@ -260,6 +275,11 @@ export function useCart() {
 export function useChatThread() {
   const { threadId, setThreadId, clearThread } = useStore();
   return { threadId, setThreadId, clearThread };
+}
+
+export function useExtraInstructions() {
+  const { extraInstructions, setExtraInstructions } = useStore();
+  return { extraInstructions, setExtraInstructions };
 }
 
 export function useHistory() {

@@ -13,6 +13,7 @@ export type OrderingInstructionsRequest = {
   targetLanguage: string;
   restrictions: string[];
   menuLanguage: string;
+  extraInstructions?: string;
 };
 
 export type OrderingInstructionsStreamState = {

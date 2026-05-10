@@ -601,7 +601,7 @@ router.post("/menu/ordering-instructions/stream", async (req, res) => {
     res.status(400).json({ error: "Invalid request body" });
     return;
   }
-  const { items, targetLanguage, restrictions, menuLanguage } = parsed.data;
+  const { items, targetLanguage, restrictions, menuLanguage, extraInstructions } = parsed.data;
 
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache, no-transform");
@@ -638,14 +638,18 @@ router.post("/menu/ordering-instructions/stream", async (req, res) => {
   const restrictionList =
     restrictions.length > 0 ? restrictions.join(", ") : "None";
 
+  const extraLine = extraInstructions && extraInstructions.trim().length > 0
+    ? `\nAdditional instructions from the user (incorporate naturally and politely): "${extraInstructions.trim()}"`
+    : "";
+
   const itemPrompt = (item: string) => `You are a food safety assistant helping a traveler order food safely.
 
 The menu is in ${menuLanguage}. The user wants to order this item: "${item}"
 The user's dietary restrictions: ${restrictionList}
-The user's native language: ${targetLanguage}
+The user's native language: ${targetLanguage}${extraLine}
 
 Generate ordering instructions for this single item:
-1. A natural phrase to say in ${menuLanguage} when ordering this item (include a polite allergy disclaimer in ${menuLanguage} if the user has restrictions)
+1. A natural phrase to say in ${menuLanguage} when ordering this item (include a polite allergy disclaimer in ${menuLanguage} if the user has restrictions, and reflect any additional instructions)
 2. A phonetic pronunciation guide for that phrase, written for a ${targetLanguage} speaker
 
 Return ONLY valid JSON:
@@ -657,9 +661,9 @@ The menu is in ${menuLanguage}. The user wants to order these items together:
 ${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
 
 The user's dietary restrictions: ${restrictionList}
-The user's native language: ${targetLanguage}
+The user's native language: ${targetLanguage}${extraLine}
 
-Generate ONE combined natural phrase in ${menuLanguage} the user can show or say to order everything at once, including a polite allergy disclaimer if there are restrictions.
+Generate ONE combined natural phrase in ${menuLanguage} the user can show or say to order everything at once, including a polite allergy disclaimer if there are restrictions, and reflecting any additional instructions.
 
 Return ONLY valid JSON: {"fullOrderPhrase":"..."}`;
 
@@ -751,12 +755,16 @@ router.post("/menu/ordering-instructions", async (req, res) => {
     return;
   }
 
-  const { items, targetLanguage, restrictions, menuLanguage } = parsed.data;
+  const { items, targetLanguage, restrictions, menuLanguage, extraInstructions } = parsed.data;
 
   const restrictionList =
     restrictions.length > 0
       ? restrictions.join(", ")
       : "None";
+
+  const extraLine = extraInstructions && extraInstructions.trim().length > 0
+    ? `\nAdditional instructions from the user (incorporate naturally and politely): "${extraInstructions.trim()}"`
+    : "";
 
   const prompt = `You are a food safety assistant helping a traveler order food safely.
 
@@ -764,12 +772,12 @@ The menu is in ${menuLanguage}. The user wants to order these items:
 ${items.map((item, i) => `${i + 1}. ${item}`).join("\n")}
 
 The user's dietary restrictions: ${restrictionList}
-The user's native language: ${targetLanguage}
+The user's native language: ${targetLanguage}${extraLine}
 
 Generate ordering instructions in ${targetLanguage} for each item. For each item:
 1. Write a natural phrase to say when ordering that item in ${menuLanguage} (the restaurant's language)
 2. Write phonetic pronunciation guide for that phrase
-3. Include a polite allergy disclaimer in ${menuLanguage} if the user has restrictions
+3. Include a polite allergy disclaimer in ${menuLanguage} if the user has restrictions, and reflect any additional instructions
 
 Also generate one combined phrase to order everything at once.
 

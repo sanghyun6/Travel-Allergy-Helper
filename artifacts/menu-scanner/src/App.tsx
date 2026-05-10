@@ -9,6 +9,7 @@ import { useEffect, type ComponentType } from "react";
 import Onboarding from "@/pages/onboarding";
 import CameraPage from "@/pages/camera";
 import CartPage from "@/pages/cart";
+import OrderPage from "@/pages/order";
 import HistoryPage from "@/pages/history";
 import SettingsPage from "@/pages/settings";
 import InsightsPage from "@/pages/insights";
@@ -32,6 +33,7 @@ function ProtectedRoute({ component: Component }: { component: ComponentType }) 
 
 function CameraRoute() { return <ProtectedRoute component={CameraPage} />; }
 function CartRoute() { return <ProtectedRoute component={CartPage} />; }
+function OrderRoute() { return <ProtectedRoute component={OrderPage} />; }
 function HistoryRoute() { return <ProtectedRoute component={HistoryPage} />; }
 function SettingsRoute() { return <ProtectedRoute component={SettingsPage} />; }
 function InsightsRoute() { return <ProtectedRoute component={InsightsPage} />; }
@@ -56,6 +58,7 @@ function Router() {
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/camera" component={CameraRoute} />
       <Route path="/cart" component={CartRoute} />
+      <Route path="/order" component={OrderRoute} />
       <Route path="/history" component={HistoryRoute} />
       <Route path="/settings" component={SettingsRoute} />
       <Route path="/insights" component={InsightsRoute} />

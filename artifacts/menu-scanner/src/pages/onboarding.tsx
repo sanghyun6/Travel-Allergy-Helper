@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowRight, ShieldCheck } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { COMMON_RESTRICTIONS, LANGUAGES } from "@/lib/constants";
+import { COMMON_RESTRICTIONS, COMMON_PREFERENCES, LANGUAGES } from "@/lib/constants";
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
@@ -17,6 +18,9 @@ export default function Onboarding() {
   const [nativeLanguage, setNativeLanguage] = useState("English");
   const [restrictions, setRestrictions] = useState<string[]>([]);
   const [customRestriction, setCustomRestriction] = useState("");
+  const [preferences, setPreferences] = useState<string[]>([]);
+  const [customPreference, setCustomPreference] = useState("");
+  const [preferenceNotes, setPreferenceNotes] = useState("");
 
   const toggleRestriction = (r: string) => {
     setRestrictions(prev =>
@@ -34,8 +38,29 @@ export default function Onboarding() {
     setCustomRestriction("");
   };
 
+  const togglePreference = (p: string) => {
+    setPreferences(prev =>
+      prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+    );
+  };
+
+  const addCustomPreference = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if (e.type === 'keydown' && (e as React.KeyboardEvent).key !== 'Enter') return;
+    if (!customPreference.trim()) return;
+    e.preventDefault();
+    if (!preferences.includes(customPreference.trim())) {
+      setPreferences(prev => [...prev, customPreference.trim()]);
+    }
+    setCustomPreference("");
+  };
+
   const handleComplete = () => {
-    setProfile({ nativeLanguage, restrictions });
+    setProfile({
+      nativeLanguage,
+      restrictions,
+      preferences,
+      preferenceNotes: preferenceNotes.trim(),
+    });
     setLocation("/camera");
   };
 
@@ -135,6 +160,90 @@ export default function Onboarding() {
                     Add
                   </Button>
                 </div>
+              </div>
+            </div>
+
+            <div className="mt-6 pt-4 bg-background">
+              <Button
+                size="lg"
+                className="w-full h-14 text-lg rounded-xl"
+                onClick={() => setStep(3)}
+                data-testid="button-continue-to-preferences"
+              >
+                Continue <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div className="flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <h2 className="text-2xl font-bold mb-2">What do you actually like?</h2>
+            <p className="text-muted-foreground mb-6">
+              Optional taste preferences. We use these to highlight dishes you'll
+              enjoy — they don't affect safety warnings.
+            </p>
+
+            <div className="flex-1 overflow-y-auto pb-4 space-y-6">
+              <div className="grid grid-cols-1 gap-3">
+                {COMMON_PREFERENCES.map(p => (
+                  <label
+                    key={p}
+                    className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${preferences.includes(p) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50'}`}
+                    data-testid={`label-preference-${p.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    <Checkbox
+                      checked={preferences.includes(p)}
+                      onCheckedChange={() => togglePreference(p)}
+                      className="mr-4 w-5 h-5"
+                    />
+                    <span className="text-base font-medium">{p}</span>
+                  </label>
+                ))}
+
+                {preferences.filter(p => !COMMON_PREFERENCES.includes(p)).map(p => (
+                  <label key={p} className="flex items-center p-4 border rounded-xl border-primary bg-primary/5 cursor-pointer">
+                    <Checkbox checked={true} onCheckedChange={() => togglePreference(p)} className="mr-4 w-5 h-5" />
+                    <span className="text-base font-medium">{p}</span>
+                  </label>
+                ))}
+              </div>
+
+              <div className="pt-4 border-t">
+                <Label className="text-sm font-medium mb-2 block">Add another preference</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="e.g. Lots of garlic"
+                    value={customPreference}
+                    onChange={(e) => setCustomPreference(e.target.value)}
+                    onKeyDown={addCustomPreference}
+                    className="h-12"
+                    data-testid="input-custom-preference"
+                  />
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    className="h-12 px-6"
+                    onClick={addCustomPreference}
+                    data-testid="button-add-custom-preference"
+                  >
+                    Add
+                  </Button>
+                </div>
+              </div>
+
+              <div className="pt-4 border-t">
+                <Label htmlFor="preference-notes" className="text-sm font-medium mb-2 block">
+                  Anything else? (optional)
+                </Label>
+                <Textarea
+                  id="preference-notes"
+                  placeholder="e.g. I love seafood, can't stand mushrooms, prefer bold flavors over bland."
+                  value={preferenceNotes}
+                  onChange={(e) => setPreferenceNotes(e.target.value)}
+                  className="min-h-[96px] text-base"
+                  data-testid="input-preference-notes"
+                />
               </div>
             </div>
 

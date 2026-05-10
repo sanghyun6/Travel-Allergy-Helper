@@ -3,6 +3,13 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef, ty
 export interface UserProfile {
   restrictions: string[];
   nativeLanguage: string;
+  // Optional taste/diet preferences captured during onboarding (e.g. "Spicy",
+  // "Low salt"). These are NOT safety filters — the analyzer uses them as
+  // soft hints to surface dishes the user is more likely to enjoy.
+  preferences?: string[];
+  // Free-text notes the user types alongside the preference tags
+  // (e.g. "I love seafood, hate mushrooms"). May be empty.
+  preferenceNotes?: string;
 }
 
 export interface MenuItem {

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { COMMON_RESTRICTIONS, LANGUAGES } from "@/lib/constants";
+import { COMMON_RESTRICTIONS, COMMON_PREFERENCES, LANGUAGES } from "@/lib/constants";
 import { Brain, ChevronRight, ArrowLeft } from "lucide-react";
 
 export default function SettingsPage() {
@@ -18,11 +19,16 @@ export default function SettingsPage() {
   const [nativeLanguage, setNativeLanguage] = useState("");
   const [restrictions, setRestrictions] = useState<string[]>([]);
   const [customRestriction, setCustomRestriction] = useState("");
+  const [preferences, setPreferences] = useState<string[]>([]);
+  const [customPreference, setCustomPreference] = useState("");
+  const [preferenceNotes, setPreferenceNotes] = useState("");
 
   useEffect(() => {
     if (profile) {
       setNativeLanguage(profile.nativeLanguage);
       setRestrictions(profile.restrictions);
+      setPreferences(profile.preferences ?? []);
+      setPreferenceNotes(profile.preferenceNotes ?? "");
     }
   }, [profile]);
 
@@ -42,8 +48,29 @@ export default function SettingsPage() {
     setCustomRestriction("");
   };
 
+  const togglePreference = (p: string) => {
+    setPreferences(prev =>
+      prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p]
+    );
+  };
+
+  const addCustomPreference = (e: React.KeyboardEvent | React.MouseEvent) => {
+    if (e.type === 'keydown' && (e as React.KeyboardEvent).key !== 'Enter') return;
+    if (!customPreference.trim()) return;
+    e.preventDefault();
+    if (!preferences.includes(customPreference.trim())) {
+      setPreferences(prev => [...prev, customPreference.trim()]);
+    }
+    setCustomPreference("");
+  };
+
   const saveSettings = () => {
-    setProfile({ nativeLanguage, restrictions });
+    setProfile({
+      nativeLanguage,
+      restrictions,
+      preferences,
+      preferenceNotes: preferenceNotes.trim(),
+    });
     toast({ title: "Settings saved", description: "Your profile has been updated." });
   };
 
@@ -125,6 +152,76 @@ export default function SettingsPage() {
                 Add
               </Button>
             </div>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <Label className="text-base font-bold">Taste Preferences</Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              Optional. Used to highlight dishes you'll enjoy — does not affect
+              safety warnings.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-3">
+            {COMMON_PREFERENCES.map(p => (
+              <label
+                key={p}
+                className={`flex items-center p-4 border rounded-xl cursor-pointer transition-colors ${preferences.includes(p) ? 'border-primary bg-primary/5' : 'hover:bg-muted/50 bg-card'}`}
+                data-testid={`label-settings-preference-${p.toLowerCase().replace(/\s+/g, '-')}`}
+              >
+                <Checkbox
+                  checked={preferences.includes(p)}
+                  onCheckedChange={() => togglePreference(p)}
+                  className="mr-4 w-5 h-5"
+                />
+                <span className="text-base font-medium">{p}</span>
+              </label>
+            ))}
+
+            {preferences.filter(p => !COMMON_PREFERENCES.includes(p)).map(p => (
+              <label key={p} className="flex items-center p-4 border rounded-xl border-primary bg-primary/5 cursor-pointer">
+                <Checkbox checked={true} onCheckedChange={() => togglePreference(p)} className="mr-4 w-5 h-5" />
+                <span className="text-base font-medium">{p}</span>
+              </label>
+            ))}
+          </div>
+
+          <div className="pt-2">
+            <Label className="text-sm font-medium mb-2 block">Add another preference</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="e.g. Lots of garlic"
+                value={customPreference}
+                onChange={(e) => setCustomPreference(e.target.value)}
+                onKeyDown={addCustomPreference}
+                className="h-12 rounded-xl"
+                data-testid="input-settings-custom-preference"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-12 px-6 rounded-xl"
+                onClick={addCustomPreference}
+                data-testid="button-settings-add-preference"
+              >
+                Add
+              </Button>
+            </div>
+          </div>
+
+          <div className="pt-2">
+            <Label htmlFor="settings-preference-notes" className="text-sm font-medium mb-2 block">
+              Notes
+            </Label>
+            <Textarea
+              id="settings-preference-notes"
+              placeholder="e.g. I love seafood, can't stand mushrooms."
+              value={preferenceNotes}
+              onChange={(e) => setPreferenceNotes(e.target.value)}
+              className="min-h-[96px] rounded-xl text-base"
+              data-testid="input-settings-preference-notes"
+            />
           </div>
         </div>
 

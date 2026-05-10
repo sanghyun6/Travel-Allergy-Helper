@@ -365,8 +365,8 @@ export default function CameraPage() {
             onClick={() => setSelectedItem(null)}
           />
 
-          {/* Sheet */}
-          <div className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-40 rounded-t-3xl bg-background shadow-2xl border-t animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[80dvh]">
+          {/* Sheet — sits above the bottom nav (which is ~64px tall) */}
+          <div className="fixed bottom-16 left-1/2 -translate-x-1/2 w-full max-w-md z-40 rounded-t-3xl bg-background shadow-2xl border-t animate-in slide-in-from-bottom-8 duration-300 flex flex-col max-h-[75dvh]">
 
             {/* Cropped photo strip */}
             {selectedItem.boundingBox && imagePreview && (

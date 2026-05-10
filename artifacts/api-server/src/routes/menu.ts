@@ -81,6 +81,10 @@ router.post("/menu/analyze", async (req, res) => {
   res.setHeader("Connection", "keep-alive");
   res.setHeader("X-Accel-Buffering", "no");
   res.flushHeaders?.();
+  // Push a byte immediately so the Replit preview proxy commits the
+  // streaming connection and does not hit its ~15s idle-timeout before
+  // the first model token arrives.
+  res.write(`: open\n\n`);
 
   const abortController = new AbortController();
   let clientGone = false;
@@ -100,7 +104,7 @@ router.post("/menu/analyze", async (req, res) => {
   const heartbeat = setInterval(() => {
     if (clientGone) return;
     res.write(`: ping\n\n`);
-  }, 15_000);
+  }, 5_000);
 
   const finish = () => {
     clearInterval(heartbeat);

@@ -11,6 +11,34 @@ import {
 
 const router = Router();
 
+/**
+ * Detect image mime from base64 magic bytes. Falls back to the supplied
+ * `claimed` value only if it's a known image type. Returns null if neither
+ * source identifies a Gemini-supported image type.
+ */
+function sniffImageMime(b64: string, claimed?: string): string | null {
+  const allowed = new Set([
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "image/heic",
+    "image/heif",
+    "image/gif",
+  ]);
+  const head = (b64 || "").slice(0, 16);
+  if (head.startsWith("/9j/")) return "image/jpeg";
+  if (head.startsWith("iVBORw")) return "image/png";
+  if (head.startsWith("UklGR")) return "image/webp";
+  if (head.startsWith("R0lGOD")) return "image/gif";
+  // HEIC/HEIF base64-encoded "ftyp" boxes typically begin with "AAAA" then "ftypheic"/"ftypmif1".
+  if (head.startsWith("AAAA") && b64.slice(0, 64).includes("ftyp")) {
+    return "image/heic";
+  }
+  const c = (claimed || "").trim().toLowerCase();
+  if (allowed.has(c)) return c;
+  return null;
+}
+
 type BBox = { ymin: number; xmin: number; ymax: number; xmax: number };
 
 type LayoutItem = {
@@ -105,7 +133,12 @@ router.post("/menu/analyze", async (req, res) => {
     return;
   }
 
-  const { imageBase64, mimeType, menuLanguage, restrictions } = parsed.data;
+  const { imageBase64, mimeType: rawMimeType, menuLanguage, restrictions } = parsed.data;
+  const mimeType = sniffImageMime(imageBase64, rawMimeType);
+  if (!mimeType) {
+    res.status(400).json({ error: "Unrecognized image data" });
+    return;
+  }
   const restrictionList =
     restrictions.length > 0 ? restrictions.join(", ") : "None specified";
 

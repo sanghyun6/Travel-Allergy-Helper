@@ -1,10 +1,11 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useLocation } from "wouter";
 import { useProfile, useCart, useChatThread } from "@/context/store-context";
-import { useGetOrderingInstructions, useSendChatMessage } from "@workspace/api-client-react";
+import { useSendChatMessage } from "@workspace/api-client-react";
+import { useOrderingInstructionsStream } from "@/hooks/use-ordering-instructions-stream";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Play, Loader2, Trash2, ChevronRight, MessageCircle, Send, ShieldCheck, Volume2, ShoppingBag, X } from "lucide-react";
+import { Play, Loader2, Trash2, ChevronRight, MessageCircle, Send, ShieldCheck, Volume2, ShoppingBag, X, RefreshCw } from "lucide-react";
 import { OutcomeButtons } from "@/components/risk-score";
 
 export default function CartPage() {
@@ -13,8 +14,23 @@ export default function CartPage() {
   const { cartItems, menuLanguage, removeFromCart, clearCart } = useCart();
   const { threadId, setThreadId, clearThread } = useChatThread();
 
-  const getInstructions = useGetOrderingInstructions();
+  const ordering = useOrderingInstructionsStream();
   const chat = useSendChatMessage();
+
+  // Convenient view of streamed instructions, ordered by index.
+  const orderedInstructions = useMemo(() => {
+    return Array.from(ordering.state.instructions.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([, v]) => v);
+  }, [ordering.state.instructions]);
+
+  const hasStarted =
+    ordering.state.status === "starting" ||
+    ordering.state.status === "streaming" ||
+    ordering.state.status === "done" ||
+    ordering.state.status === "error";
+  const isStreaming =
+    ordering.state.status === "starting" || ordering.state.status === "streaming";
 
   const [chatMessage, setChatMessage] = useState("");
   const [messages, setMessages] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
@@ -30,13 +46,11 @@ export default function CartPage() {
 
   const handleGenerateInstructions = () => {
     if (!profile || !menuLanguage || cartItems.length === 0) return;
-    getInstructions.mutate({
-      data: {
-        items: cartItems.map(i => i.name),
-        targetLanguage: profile.nativeLanguage,
-        restrictions: profile.restrictions,
-        menuLanguage: menuLanguage,
-      },
+    void ordering.start({
+      items: cartItems.map(i => i.name),
+      targetLanguage: profile.nativeLanguage,
+      restrictions: profile.restrictions,
+      menuLanguage: menuLanguage,
     });
   };
 
@@ -70,7 +84,7 @@ export default function CartPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMsg }]);
     setChatMessage("");
 
-    const orderingPhrases = getInstructions.data?.instructions.map(i => i.phrase) || [];
+    const orderingPhrases = orderedInstructions.map(i => i.phrase);
 
     chat.mutate(
       {
@@ -94,7 +108,7 @@ export default function CartPage() {
   const handleClearCart = () => {
     clearCart();
     clearThread();
-    getInstructions.reset();
+    ordering.reset();
     setMessages([]);
   };
 
@@ -159,7 +173,7 @@ export default function CartPage() {
                   <Trash2 className="w-5 h-5" />
                 </Button>
               </div>
-              {getInstructions.data && (
+              {hasStarted && (
                 <OutcomeButtons
                   compact
                   dish={{
@@ -178,74 +192,138 @@ export default function CartPage() {
           ))}
         </div>
 
-        {!getInstructions.data && (
+        {!hasStarted && (
           <div className="p-4">
             <Button
               size="lg"
               className="w-full h-14 text-lg rounded-xl shadow-md"
               onClick={handleGenerateInstructions}
-              disabled={getInstructions.isPending}
               data-testid="button-generate-instructions"
             >
-              {getInstructions.isPending ? (
-                <><Loader2 className="w-5 h-5 mr-2 animate-spin" /> Preparing translation...</>
-              ) : (
-                <>Generate Ordering Instructions <ChevronRight className="w-5 h-5 ml-1" /></>
-              )}
+              Generate Ordering Instructions <ChevronRight className="w-5 h-5 ml-1" />
             </Button>
           </div>
         )}
 
-        {getInstructions.data && (
+        {hasStarted && (
           <div className="p-4 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Full order phrase card */}
             <div className="p-5 bg-primary/10 border border-primary/20 rounded-2xl">
               <div className="flex items-center gap-2 text-primary font-bold mb-3">
                 <ShieldCheck className="w-5 h-5" />
                 <span>Show this to the waiter</span>
+                {isStreaming && !ordering.state.fullOrderPhrase && (
+                  <Loader2 className="w-4 h-4 animate-spin ml-auto" />
+                )}
               </div>
-              <p className="text-xl font-medium leading-snug" data-testid="text-full-order-phrase">
-                {getInstructions.data.fullOrderPhrase}
-              </p>
-              <Button
-                variant="outline"
-                className="mt-4 w-full border-primary/30 hover:bg-primary/5 text-primary"
-                onClick={() => playAudio(getInstructions.data.fullOrderPhrase)}
-                disabled={ttsLoading}
-                data-testid="button-play-full-phrase"
-              >
-                {ttsLoading
-                  ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  : <Volume2 className="w-4 h-4 mr-2" />}
-                Play Audio
-              </Button>
+              {ordering.state.fullOrderPhrase ? (
+                <>
+                  <p className="text-xl font-medium leading-snug" data-testid="text-full-order-phrase">
+                    {ordering.state.fullOrderPhrase}
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="mt-4 w-full border-primary/30 hover:bg-primary/5 text-primary"
+                    onClick={() => playAudio(ordering.state.fullOrderPhrase)}
+                    disabled={ttsLoading}
+                    data-testid="button-play-full-phrase"
+                  >
+                    {ttsLoading
+                      ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      : <Volume2 className="w-4 h-4 mr-2" />}
+                    Play Audio
+                  </Button>
+                </>
+              ) : ordering.state.fullOrderError ? (
+                <p className="text-sm text-destructive">
+                  Couldn't compose the combined phrase. {ordering.state.fullOrderError}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <div className="h-6 bg-primary/20 rounded animate-pulse" />
+                  <div className="h-6 bg-primary/15 rounded animate-pulse w-4/5" />
+                </div>
+              )}
             </div>
 
             {/* Per-item breakdown */}
             <div className="space-y-3">
-              <h3 className="font-bold text-lg px-1">Item Breakdown</h3>
-              {getInstructions.data.instructions.map((inst, idx) => (
+              <div className="flex items-center justify-between px-1">
+                <h3 className="font-bold text-lg">Item Breakdown</h3>
+                {isStreaming && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1" data-testid="text-translation-progress">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    {ordering.state.instructions.size} of {ordering.state.total} translated
+                  </span>
+                )}
+              </div>
+
+              {/* Top-level stream error banner (network/timeout/abort) with
+                  retry. Per-item failures use the inline destructive row below. */}
+              {ordering.state.status === "error" && ordering.state.error && (
                 <div
-                  key={idx}
-                  className="p-4 border rounded-xl bg-card space-y-3"
-                  data-testid={`instruction-item-${idx}`}
+                  className="p-3 border border-destructive/30 bg-destructive/10 rounded-xl flex items-center gap-3"
+                  data-testid="ordering-stream-error"
                 >
-                  <p className="font-bold text-sm text-muted-foreground uppercase tracking-wider">{inst.item}</p>
-                  <p className="text-lg font-medium">{inst.phrase}</p>
-                  <div className="flex items-center justify-between pt-2 border-t border-dashed">
-                    <p className="text-sm text-muted-foreground italic">"{inst.pronunciation}"</p>
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 text-primary"
-                      onClick={() => playAudio(inst.phrase)}
-                      data-testid={`button-play-phrase-${idx}`}
-                    >
-                      <Play className="w-4 h-4 fill-current" />
-                    </Button>
-                  </div>
+                  <span className="text-sm text-destructive flex-1">
+                    {ordering.state.error}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleGenerateInstructions}
+                    data-testid="button-retry-ordering"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-1" /> Retry
+                  </Button>
                 </div>
-              ))}
+              )}
+
+              {/* Render the snapshot of items captured at start() — NOT the live
+                  cart — so removing/reordering items mid-stream cannot shift
+                  the index→translation mapping. */}
+              {ordering.state.snapshotItems.map((snapshotName, idx) => {
+                const inst = ordering.state.instructions.get(idx);
+                const failure = ordering.state.itemErrors.get(idx);
+                return (
+                  <div
+                    key={idx}
+                    className="p-4 border rounded-xl bg-card space-y-3"
+                    data-testid={`instruction-item-${idx}`}
+                  >
+                    <p className="font-bold text-sm text-muted-foreground uppercase tracking-wider">
+                      {inst?.item ?? snapshotName}
+                    </p>
+                    {inst ? (
+                      <>
+                        <p className="text-lg font-medium">{inst.phrase}</p>
+                        <div className="flex items-center justify-between pt-2 border-t border-dashed">
+                          <p className="text-sm text-muted-foreground italic">"{inst.pronunciation}"</p>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-primary"
+                            onClick={() => playAudio(inst.phrase)}
+                            data-testid={`button-play-phrase-${idx}`}
+                          >
+                            <Play className="w-4 h-4 fill-current" />
+                          </Button>
+                        </div>
+                      </>
+                    ) : failure ? (
+                      <div className="flex items-center gap-2 text-sm text-destructive">
+                        <RefreshCw className="w-4 h-4" />
+                        <span>Couldn't translate this item. {failure.message}</span>
+                      </div>
+                    ) : (
+                      <div className="space-y-2" data-testid={`instruction-item-${idx}-loading`}>
+                        <div className="h-5 bg-muted rounded animate-pulse" />
+                        <div className="h-4 bg-muted rounded animate-pulse w-3/5" />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
             {/* Chat assistant */}

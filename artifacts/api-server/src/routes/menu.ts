@@ -591,6 +591,159 @@ router.get("/menu/ingredient-graph/lookup", async (req, res) => {
   }
 });
 
+// SSE variant of ordering-instructions. Emits one event per translated item
+// as it finishes (parallel Gemini calls), then a final `full` event with the
+// combined order phrase, then `done`. This way the user sees per-item
+// translations stream in instead of staring at a spinner for the whole batch.
+router.post("/menu/ordering-instructions/stream", async (req, res) => {
+  const parsed = GetOrderingInstructionsBody.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "Invalid request body" });
+    return;
+  }
+  const { items, targetLanguage, restrictions, menuLanguage } = parsed.data;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+  res.flushHeaders?.();
+  res.write(`: open\n\n`);
+
+  const abortController = new AbortController();
+  let clientGone = false;
+  res.on("close", () => {
+    if (!res.writableEnded) {
+      clientGone = true;
+      abortController.abort();
+    }
+  });
+
+  const send = (event: string, data: unknown) => {
+    if (clientGone) return;
+    res.write(`event: ${event}\n`);
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+
+  const heartbeat = setInterval(() => {
+    if (clientGone) return;
+    res.write(`: ping\n\n`);
+  }, 5_000);
+
+  const finish = () => {
+    clearInterval(heartbeat);
+    if (!clientGone) res.end();
+  };
+
+  const restrictionList =
+    restrictions.length > 0 ? restrictions.join(", ") : "None";
+
+  const itemPrompt = (item: string) => `You are a food safety assistant helping a traveler order food safely.
+
+The menu is in ${menuLanguage}. The user wants to order this item: "${item}"
+The user's dietary restrictions: ${restrictionList}
+The user's native language: ${targetLanguage}
+
+Generate ordering instructions for this single item:
+1. A natural phrase to say in ${menuLanguage} when ordering this item (include a polite allergy disclaimer in ${menuLanguage} if the user has restrictions)
+2. A phonetic pronunciation guide for that phrase, written for a ${targetLanguage} speaker
+
+Return ONLY valid JSON:
+{"phrase":"...","pronunciation":"..."}`;
+
+  const fullPrompt = `You are a food safety assistant helping a traveler order food safely.
+
+The menu is in ${menuLanguage}. The user wants to order these items together:
+${items.map((it, i) => `${i + 1}. ${it}`).join("\n")}
+
+The user's dietary restrictions: ${restrictionList}
+The user's native language: ${targetLanguage}
+
+Generate ONE combined natural phrase in ${menuLanguage} the user can show or say to order everything at once, including a polite allergy disclaimer if there are restrictions.
+
+Return ONLY valid JSON: {"fullOrderPhrase":"..."}`;
+
+  const callGemini = async (prompt: string): Promise<string> => {
+    const resp = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": process.env.GOOGLE_API_KEY!,
+        },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            responseMimeType: "application/json",
+            maxOutputTokens: 1024,
+            thinkingConfig: { thinkingBudget: 0 },
+          },
+        }),
+        signal: abortController.signal,
+      },
+    );
+    if (!resp.ok) {
+      const t = await resp.text().catch(() => "");
+      throw new Error(`Gemini ${resp.status}: ${t.slice(0, 200)}`);
+    }
+    const json = (await resp.json()) as {
+      candidates?: { content?: { parts?: { text?: string }[] } }[];
+    };
+    return json.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}";
+  };
+
+  send("started", { total: items.length });
+
+  // Kick off all per-item translations + the combined phrase in parallel,
+  // emitting an event as each finishes.
+  const itemPromises = items.map(async (item, index) => {
+    try {
+      const text = await callGemini(itemPrompt(item));
+      const obj = JSON.parse(text) as { phrase?: string; pronunciation?: string };
+      send("item", {
+        index,
+        item,
+        phrase: obj.phrase ?? "",
+        pronunciation: obj.pronunciation ?? "",
+      });
+    } catch (err) {
+      if (clientGone) return;
+      send("item_error", {
+        index,
+        item,
+        message: err instanceof Error ? err.message : "Translation failed",
+      });
+    }
+  });
+
+  const fullPromise = (async () => {
+    try {
+      const text = await callGemini(fullPrompt);
+      const obj = JSON.parse(text) as { fullOrderPhrase?: string };
+      send("full", { fullOrderPhrase: obj.fullOrderPhrase ?? "" });
+    } catch (err) {
+      if (clientGone) return;
+      send("full_error", {
+        message: err instanceof Error ? err.message : "Failed to compose full phrase",
+      });
+    }
+  })();
+
+  try {
+    await Promise.all([...itemPromises, fullPromise]);
+    send("done", { total: items.length });
+  } catch (err) {
+    if (!clientGone) {
+      send("error", {
+        message: err instanceof Error ? err.message : "Stream failed",
+      });
+    }
+  } finally {
+    finish();
+  }
+});
+
 router.post("/menu/ordering-instructions", async (req, res) => {
   const parsed = GetOrderingInstructionsBody.safeParse(req.body);
   if (!parsed.success) {
